@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   FilePlus,
   Search,
@@ -54,10 +54,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useToast } from "@/hooks/use-toast"
+
 
 // --- MOCK DATA AND TYPES ---
 
-const mockPatients = [
+const initialPatients = [
   {
     mrn: 'TZ-2025-1101',
     name: 'Amina Hassan',
@@ -127,11 +129,32 @@ const mockPatients = [
         { step: 'Registered', time: '10:10', by: 'Fatuma', status: 'processing' },
     ]
   },
+  {
+    mrn: 'TZ-2025-1104',
+    name: 'David Chen',
+    dob: '1975-11-30',
+    sex: 'M',
+    age: 48,
+    bloodType: 'AB+',
+    photo: 'https://picsum.photos/seed/patient4/100/100',
+    phone: '+255 765 432 109',
+    status: 'Done',
+    doctor: 'Dr. Evelyn',
+    waitTime: 45,
+    criticalAlert: null,
+    lastAction: 'Discharged',
+    lastActionTimestamp: '11:00',
+    encounterType: 'Discharged',
+    timeline: [
+      { step: 'Registered', time: '10:15', by: 'Fatuma', status: 'completed' },
+    ]
+  },
 ];
 
 const kanbanColumns = ['Queue', 'In Progress', 'Labs', 'Pharmacy', 'Done'];
 
-type Patient = (typeof mockPatients)[0];
+type Patient = (typeof initialPatients)[0];
+type TimelineStep = Patient['timeline'][0];
 
 const getBorderColor = (patient: Patient) => {
   if (patient.criticalAlert) return 'border-red-500';
@@ -142,6 +165,13 @@ const getBorderColor = (patient: Patient) => {
 // --- COMPONENTS ---
 
 function PatientCard({ patient, onSelect }: { patient: Patient, onSelect: (p: Patient) => void }) {
+  const { toast } = useToast();
+
+  const handleAction = (e: React.MouseEvent, action: string) => {
+    e.stopPropagation();
+    toast({ title: `${action} clicked`, description: `Action for ${patient.name}` });
+  };
+  
   return (
     <Card className={cn("mb-4 cursor-pointer hover:shadow-lg", getBorderColor(patient), "border-l-4")} onClick={() => onSelect(patient)}>
       <CardContent className="p-3">
@@ -162,8 +192,8 @@ function PatientCard({ patient, onSelect }: { patient: Patient, onSelect: (p: Pa
         </div>
         {patient.criticalAlert && <p className="text-xs text-red-500 font-semibold mt-1">{patient.criticalAlert}</p>}
          <div className="flex gap-2 mt-3">
-            <Button size="sm" variant="outline" className="h-7 text-xs w-full">Open</Button>
-            <Button size="sm" variant="secondary" className="h-7 text-xs w-full"><Phone className="size-3 mr-1"/>Call</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs w-full" onClick={() => onSelect(patient)}>Open</Button>
+            <Button size="sm" variant="secondary" className="h-7 text-xs w-full" onClick={(e) => handleAction(e, 'Call')}><Phone className="size-3 mr-1"/>Call</Button>
         </div>
       </CardContent>
     </Card>
@@ -171,7 +201,15 @@ function PatientCard({ patient, onSelect }: { patient: Patient, onSelect: (p: Pa
 }
 
 function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
+    const { toast } = useToast();
     if (!patient) return null;
+
+    const handleAction = (action: string) => {
+        toast({
+            title: `Action: ${action}`,
+            description: `Performed action for ${patient.name}`
+        });
+    };
 
     return (
         <Card className={cn(
@@ -201,8 +239,8 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
                 <div className="mb-2">
                     <h4 className="font-semibold text-sm mb-2">Chain Timeline</h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-                        {patient.timeline.map(item => (
-                            <div key={item.step} className="flex items-center gap-1 cursor-pointer">
+                        {patient.timeline.map((item: TimelineStep) => (
+                            <div key={item.step} className="flex items-center gap-1 cursor-pointer" onClick={() => handleAction(`View step: ${item.step}`)}>
                                 {item.status === 'completed' && <Badge className="bg-green-500 size-4 p-0"><Check className="size-3"/></Badge>}
                                 {item.status === 'processing' && <Badge className="bg-yellow-500 size-4 p-0 animate-pulse"></Badge>}
                                 {item.status === 'pending' && <Badge variant="outline" className="size-4 p-0"></Badge>}
@@ -216,12 +254,12 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
                 <div>
                      <h4 className="font-semibold text-sm mb-2">Role-Based Actions</h4>
                      <div className="flex flex-wrap gap-2">
-                         <Button size="sm" variant="outline"><User className="mr-1"/>Open Chart</Button>
-                         <Button size="sm" variant="outline"><FlaskConical className="mr-1"/>View Labs</Button>
-                         <Button size="sm" variant="outline"><Pill className="mr-1"/>e-Prescribe</Button>
-                         <Button size="sm" variant="outline"><DollarSign className="mr-1"/>Generate Bill</Button>
-                         <Button size="sm" variant="secondary"><Printer className="mr-1"/>Print Summary</Button>
-                         <Button size="sm" variant="secondary"><Phone className="mr-1"/>SMS Patient</Button>
+                         <Button size="sm" variant="outline" onClick={() => handleAction('Open Chart')}><User className="mr-1"/>Open Chart</Button>
+                         <Button size="sm" variant="outline" onClick={() => handleAction('View Labs')}><FlaskConical className="mr-1"/>View Labs</Button>
+                         <Button size="sm" variant="outline" onClick={() => handleAction('e-Prescribe')}><Pill className="mr-1"/>e-Prescribe</Button>
+                         <Button size="sm" variant="outline" onClick={() => handleAction('Generate Bill')}><DollarSign className="mr-1"/>Generate Bill</Button>
+                         <Button size="sm" variant="secondary" onClick={() => handleAction('Print Summary')}><Printer className="mr-1"/>Print Summary</Button>
+                         <Button size="sm" variant="secondary" onClick={() => handleAction('SMS Patient')}><Phone className="mr-1"/>SMS Patient</Button>
                      </div>
                 </div>
             </CardContent>
@@ -229,7 +267,59 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
     );
 }
 
-function NewPatientModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) {
+function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, onOpenChange: (open: boolean) => void, onRegister: (patient: Patient) => void }) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+      firstName: '',
+      lastName: '',
+      dob: '',
+      phone: '',
+      nationalId: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { id, value } = e.target;
+      setFormData(prev => ({...prev, [id]: value}));
+  };
+
+  const handleRegister = () => {
+    if (!formData.firstName || !formData.lastName) {
+        toast({
+            variant: "destructive",
+            title: "Registration Error",
+            description: "First and last name are required."
+        });
+        return;
+    }
+    const newPatient: Patient = {
+        mrn: `TZ-2025-${Math.floor(Math.random() * 9000) + 1000}`,
+        name: `${formData.firstName} ${formData.lastName}`,
+        dob: formData.dob,
+        sex: 'M',
+        age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 0,
+        bloodType: 'O+',
+        photo: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        phone: formData.phone,
+        status: 'Queue',
+        doctor: 'Dr. Juma',
+        waitTime: 1,
+        criticalAlert: null,
+        lastAction: 'Registered',
+        lastActionTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
+        encounterType: 'OPD',
+        timeline: [
+            { step: 'Registered', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}), by: 'Fatuma', status: 'processing' },
+        ]
+    };
+    onRegister(newPatient);
+    toast({
+        title: "Patient Registered",
+        description: `${newPatient.name} has been added to the queue.`
+    })
+    onOpenChange(false);
+    setFormData({ firstName: '', lastName: '', dob: '', phone: '', nationalId: ''});
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -241,21 +331,21 @@ function NewPatientModal({ open, onOpenChange }: { open: boolean, onOpenChange: 
             <div className="size-24 rounded-full bg-muted flex items-center justify-center">
                 <Upload className="text-muted-foreground"/>
             </div>
-            <Button variant="outline" size="sm">Upload Photo</Button>
+            <Button variant="outline" size="sm" onClick={() => toast({ title: "Upload Photo clicked" })}>Upload Photo</Button>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1"><Label htmlFor="firstName">First Name</Label><Input id="firstName"/></div>
-            <div className="space-y-1"><Label htmlFor="lastName">Last Name</Label><Input id="lastName"/></div>
+            <div className="space-y-1"><Label htmlFor="firstName">First Name</Label><Input id="firstName" value={formData.firstName} onChange={handleChange} /></div>
+            <div className="space-y-1"><Label htmlFor="lastName">Last Name</Label><Input id="lastName" value={formData.lastName} onChange={handleChange} /></div>
           </div>
            <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1"><Label htmlFor="dob">Date of Birth</Label><Input id="dob" type="date"/></div>
-            <div className="space-y-1"><Label htmlFor="phone">Phone</Label><Input id="phone" placeholder="+255..."/></div>
+            <div className="space-y-1"><Label htmlFor="dob">Date of Birth</Label><Input id="dob" type="date" value={formData.dob} onChange={handleChange}/></div>
+            <div className="space-y-1"><Label htmlFor="phone">Phone</Label><Input id="phone" placeholder="+255..." value={formData.phone} onChange={handleChange}/></div>
           </div>
-          <div className="space-y-1"><Label htmlFor="nationalId">National ID</Label><Input id="nationalId"/></div>
+          <div className="space-y-1"><Label htmlFor="nationalId">National ID</Label><Input id="nationalId" value={formData.nationalId} onChange={handleChange}/></div>
         </div>
         <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={() => onOpenChange(false)}>Register & Print Wristband</Button>
+            <Button onClick={handleRegister}>Register & Print Wristband</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -266,15 +356,62 @@ function NewPatientModal({ open, onOpenChange }: { open: boolean, onOpenChange: 
 // --- MAIN PAGE COMPONENT ---
 
 export default function PatientsPage() {
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(mockPatients[0]);
+  const [patients, setPatients] = useState<Patient[]>(initialPatients);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(initialPatients[0]);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeEncounterFilter, setActiveEncounterFilter] = useState('OPD');
+  const [quickFilters, setQuickFilters] = useState({
+      critical: false,
+      waiting: false,
+      labsPending: false,
+  });
+
+  const handleRegisterPatient = (newPatient: Patient) => {
+      setPatients(prev => [newPatient, ...prev]);
+  };
+  
+  const handleQuickFilterChange = (filter: keyof typeof quickFilters) => {
+    setQuickFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
+  };
+
+  const filteredPatients = useMemo(() => {
+    return patients
+      .filter(p => {
+        // Encounter Type Filter
+        if (activeEncounterFilter === 'OPD') return p.encounterType === 'OPD';
+        if (activeEncounterFilter === 'Discharged') return p.encounterType === 'Discharged';
+        // Add other encounter types here...
+        return true; // fallback
+      })
+      .filter(p => {
+        // Search Filter
+        if (!searchTerm) return true;
+        const lowerSearch = searchTerm.toLowerCase();
+        return p.name.toLowerCase().includes(lowerSearch) || p.mrn.toLowerCase().includes(lowerSearch);
+      })
+      .filter(p => {
+        // Quick Filters
+        if (quickFilters.critical && !p.criticalAlert) return false;
+        if (quickFilters.waiting && p.waitTime <= 30) return false;
+        if (quickFilters.labsPending && p.status !== 'Labs') return false;
+        return true;
+      });
+  }, [patients, searchTerm, activeEncounterFilter, quickFilters]);
 
   const patientsByColumn = useMemo(() => {
     return kanbanColumns.reduce((acc, col) => {
-      acc[col] = mockPatients.filter(p => p.status === col);
+      acc[col] = filteredPatients.filter(p => p.status === col || (col === 'Done' && p.status === 'Discharged'));
       return acc;
     }, {} as Record<string, Patient[]>);
-  }, []);
+  }, [filteredPatients]);
+  
+  const encounterCounts = useMemo(() => ({
+    opd: patients.filter(p => p.encounterType === 'OPD').length,
+    emergency: patients.filter(p => p.encounterType === 'Emergency').length,
+    inpatient: patients.filter(p => p.encounterType === 'Inpatient').length,
+    discharged: patients.filter(p => p.encounterType === 'Discharged').length,
+  }), [patients]);
 
   return (
     <div className="flex h-screen w-full flex-col bg-muted/40">
@@ -287,7 +424,7 @@ export default function PatientsPage() {
                 <div className="flex items-center gap-2">
                     <div className="relative w-64">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Global Search (MRN, Name...)" className="pl-8" />
+                        <Input placeholder="Global Search (MRN, Name...)" className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                     <Button onClick={() => setIsRegistering(true)}>
                         <FilePlus className="mr-2 size-4" />
@@ -302,10 +439,10 @@ export default function PatientsPage() {
                   <CardContent className="flex flex-wrap items-center gap-4 p-2">
                     <div className="flex items-center gap-2">
                       <Label>Encounter:</Label>
-                      <Button variant="ghost" size="sm" className="h-7">OPD (12)</Button>
-                      <Button variant="ghost" size="sm" className="h-7">Emergency (3)</Button>
-                      <Button variant="ghost" size="sm" className="h-7">Inpatient (1)</Button>
-                      <Button variant="ghost" size="sm" className="h-7">Discharged (34)</Button>
+                      <Button variant={activeEncounterFilter === 'OPD' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('OPD')}>OPD ({encounterCounts.opd})</Button>
+                      <Button variant={activeEncounterFilter === 'Emergency' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('Emergency')}>Emergency ({encounterCounts.emergency})</Button>
+                      <Button variant={activeEncounterFilter === 'Inpatient' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('Inpatient')}>Inpatient ({encounterCounts.inpatient})</Button>
+                      <Button variant={activeEncounterFilter === 'Discharged' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('Discharged')}>Discharged ({encounterCounts.discharged})</Button>
                     </div>
                     <Separator orientation="vertical" className="h-6"/>
                     <div className="flex items-center gap-2">
@@ -324,9 +461,9 @@ export default function PatientsPage() {
                     <Separator orientation="vertical" className="h-6"/>
                      <div className="flex items-center gap-2 text-sm">
                       <Label>Quick Filters:</Label>
-                       <div className="flex items-center space-x-2"><Checkbox id="critical"/><Label htmlFor="critical">Critical Alerts (1)</Label></div>
-                       <div className="flex items-center space-x-2"><Checkbox id="waiting"/><Label htmlFor="waiting">Waiting >30 min (0)</Label></div>
-                       <div className="flex items-center space-x-2"><Checkbox id="labs-pending"/><Label htmlFor="labs-pending">Labs Pending (1)</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="critical" checked={quickFilters.critical} onCheckedChange={() => handleQuickFilterChange('critical')}/><Label htmlFor="critical">Critical Alerts ({patients.filter(p=>p.criticalAlert).length})</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="waiting" checked={quickFilters.waiting} onCheckedChange={() => handleQuickFilterChange('waiting')} /><Label htmlFor="waiting">Waiting >30 min ({patients.filter(p=>p.waitTime > 30).length})</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="labs-pending" checked={quickFilters.labsPending} onCheckedChange={() => handleQuickFilterChange('labsPending')} /><Label htmlFor="labs-pending">Labs Pending ({patients.filter(p=>p.status === 'Labs').length})</Label></div>
                     </div>
 
                   </CardContent>
@@ -340,14 +477,17 @@ export default function PatientsPage() {
                                 {patientsByColumn[col]?.map(p => (
                                     <PatientCard key={p.mrn} patient={p} onSelect={setSelectedPatient} />
                                 ))}
+                                {patientsByColumn[col]?.length === 0 && <p className="text-xs text-center text-muted-foreground p-4">No patients in this stage.</p>}
                             </div>
                         </div>
                     ))}
                 </div>
             </main>
-        <NewPatientModal open={isRegistering} onOpenChange={setIsRegistering} />
+        <NewPatientModal open={isRegistering} onOpenChange={setIsRegistering} onRegister={handleRegisterPatient} />
         <SelectedPatientTimeline patient={selectedPatient} />
         </div>
     </div>
   );
 }
+
+    
