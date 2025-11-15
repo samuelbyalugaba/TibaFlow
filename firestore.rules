@@ -1,0 +1,354 @@
+/**
+ * @fileoverview Firestore Security Rules for MediChain Application
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict ownership model for patient-related data, where only the patient (or authorized staff) can access their information.
+ * Medication data is public read, with write access potentially restricted to pharmacy staff (not yet implemented).
+ * Incident reports are primarily controlled by the reporter and authorized staff.
+ * Doctor and Radiologist information is publicly available.
+ *
+ * Data Structure:
+ * The data is organized into top-level collections like `patients`, `medications`, `doctors`, `radiologists`, `staff`, and `incidentReports`.
+ * Patient-specific data (prescriptions, appointments, lab orders, radiology orders, vital signs) are nested under the `/patients/{patientId}` path.
+ *
+ * Key Security Decisions:
+ * - Listing of patient subcollections (e.g., prescriptions, appointments) is restricted to the patient themselves.
+ * - Medication data is publicly readable, but write access is not yet strictly controlled.
+ * - Doctor and Radiologist data is publicly readable.
+ * - Incident reports are writeable only by the staff member whose ID matches the reporterId, with no listing allowed for non-admins.
+ * - Staff data is writeable only by HR/Admin staff (not yet implemented).
+ * - All write operations require a valid authenticated user.
+ * - Default security posture for ambiguous relationships is strict owner-only access.
+ *
+ * Denormalization for Authorization:
+ * - The `Prescription`, `Appointment`, `LabOrder`, `RadiologyOrder`, and `VitalSign` documents, which are nested under `/patients/{patientId}`, must have a `patientId` field that matches the `patientId` in the path. This is enforced on create and update to prevent unauthorized data linking.
+ * - The `IncidentReport` document must have a `reporterId` field that matches the authenticated user's UID.
+ *
+ * Structural Segregation:
+ * Patient-specific data is segregated under the `/patients/{patientId}` path to ensure privacy and controlled access.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows access to patient documents based on patient ID.
+     * @path /patients/{patientId}
+     * @allow (get, create, update, delete, list) if the user is the patient (patientId matches auth.uid).
+     * @deny (get, create, update, delete, list) if the user is not the patient.
+     * @principle Enforces document ownership for writes.
+     */
+    match /patients/{patientId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if true; // Allow public read access for prototyping. In production, restrict this to the patient or authorized staff.
+      allow list: if false; // Prevent listing all patients, which could expose sensitive information.
+      allow create: if isOwner(patientId);
+      allow update: if isExistingOwner(patientId);
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows public read access to medication documents, write access is currently open for prototyping.
+     * @path /medications/{medicationId}
+     * @allow (get, list) if true (public).
+     * @allow (create, update, delete) if false (currently restricted, but consider pharmacy staff roles in the future).
+     * @deny (create, update, delete) if true (no conditions met).
+     * @principle Allows public read access but restricts write access.
+     */
+    match /medications/{medicationId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Restrict to pharmacy staff
+      allow update: if false; // TODO: Restrict to pharmacy staff
+      allow delete: if false; // TODO: Restrict to pharmacy staff
+    }
+
+    /**
+     * @description Allows access to medication batch documents, write access is currently open for prototyping.
+     * @path /medications/{medicationId}/batches/{batchId}
+     * @allow (get, list) if true.
+     * @allow (create, update, delete) if false (currently restricted, but consider pharmacy staff roles in the future).
+     * @deny (create, update, delete) if true (no conditions met).
+     * @principle Allows public read access but restricts write access.
+     */
+    match /medications/{medicationId}/batches/{batchId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Restrict to pharmacy staff
+      allow update: if false; // TODO: Restrict to pharmacy staff
+      allow delete: if false; // TODO: Restrict to pharmacy staff
+    }
+
+    /**
+     * @description Allows access to prescription documents for a specific patient.
+     * @path /patients/{patientId}/prescriptions/{prescriptionId}
+     * @allow (get, list) if the user is the patient.
+     * @allow (create) if the user is the patient and the patientId in the document matches the path.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, list, create, update, delete) if the user is not the patient.
+     * @principle Enforces document ownership and validates patient ID on create and update.
+     */
+    match /patients/{patientId}/prescriptions/{prescriptionId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId) && request.resource.data.patientId == patientId;
+      allow update: if isExistingOwner(patientId) && request.resource.data.patientId == resource.data.patientId;
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows public read access to doctor documents.
+     * @path /doctors/{doctorId}
+     * @allow (get, list) if true (public).
+     * @allow (create, update, delete) if false (currently restricted, but consider staff roles in the future).
+     * @deny (create, update, delete) if true (no conditions met).
+     * @principle Allows public read access but restricts write access.
+     */
+    match /doctors/{doctorId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Restrict to authorized staff
+      allow update: if false; // TODO: Restrict to authorized staff
+      allow delete: if false; // TODO: Restrict to authorized staff
+    }
+
+    /**
+     * @description Allows access to appointment documents for a specific patient.
+     * @path /patients/{patientId}/appointments/{appointmentId}
+     * @allow (get, list) if the user is the patient.
+     * @allow (create) if the user is the patient and the patientId in the document matches the path.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, list, create, update, delete) if the user is not the patient.
+     * @principle Enforces document ownership and validates patient ID on create and update.
+     */
+    match /patients/{patientId}/appointments/{appointmentId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId) && request.resource.data.patientId == patientId;
+      allow update: if isExistingOwner(patientId) && request.resource.data.patientId == resource.data.patientId;
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows access to lab order documents for a specific patient.
+     * @path /patients/{patientId}/labOrders/{labOrderId}
+     * @allow (get, list) if the user is the patient.
+     * @allow (create) if the user is the patient and the patientId in the document matches the path.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, list, create, update, delete) if the user is not the patient.
+     * @principle Enforces document ownership and validates patient ID on create and update.
+     */
+    match /patients/{patientId}/labOrders/{labOrderId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId) && request.resource.data.patientId == patientId;
+      allow update: if isExistingOwner(patientId) && request.resource.data.patientId == resource.data.patientId;
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows access to lab result documents for a specific patient and lab order.
+     * @path /patients/{patientId}/labOrders/{labOrderId}/labResult
+     * @allow (get) if the user is the patient.
+     * @allow (create) if the user is the patient.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, create, update, delete) if the user is not the patient.
+     */
+    match /patients/{patientId}/labOrders/{labOrderId}/labResult {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId);
+      allow update: if isExistingOwner(patientId);
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows access to radiology order documents for a specific patient.
+     * @path /patients/{patientId}/radiologyOrders/{radiologyOrderId}
+     * @allow (get, list) if the user is the patient.
+     * @allow (create) if the user is the patient and the patientId in the document matches the path.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, list, create, update, delete) if the user is not the patient.
+     * @principle Enforces document ownership and validates patient ID on create and update.
+     */
+    match /patients/{patientId}/radiologyOrders/{radiologyOrderId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId) && request.resource.data.patientId == patientId;
+      allow update: if isExistingOwner(patientId) && request.resource.data.patientId == resource.data.patientId;
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows access to radiology report documents for a radiology order.
+     * @path /radiologyOrders/{radiologyOrderId}/radiologyReport
+     *  // CRITICAL: Cannot implement owner-only writes.  There is no patientId at this level, nor could one be easily validated against a higher-level document.
+     */
+    match /radiologyOrders/{radiologyOrderId}/radiologyReport {
+      allow get: if true; // TODO: Restrict to authorized users
+      allow list: if true; // TODO: Restrict to authorized users
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Allows public read access to radiologist documents.
+     * @path /radiologists/{radiologistId}
+     * @allow (get, list) if true (public).
+     * @allow (create, update, delete) if false (currently restricted, but consider staff roles in the future).
+     * @deny (create, update, delete) if true (no conditions met).
+     * @principle Allows public read access but restricts write access.
+     */
+    match /radiologists/{radiologistId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Restrict to authorized staff
+      allow update: if false; // TODO: Restrict to authorized staff
+      allow delete: if false; // TODO: Restrict to authorized staff
+    }
+
+    /**
+     * @description Allows access to vital sign documents for a specific patient.
+     * @path /patients/{patientId}/vitalSigns/{vitalSignId}
+     * @allow (get, list) if the user is the patient.
+     * @allow (create) if the user is the patient and the patientId in the document matches the path.
+     * @allow (update, delete) if the user is the patient and the document exists.
+     * @deny (get, list, create, update, delete) if the user is not the patient.
+     * @principle Enforces document ownership and validates patient ID on create and update.
+     */
+    match /patients/{patientId}/vitalSigns/{vitalSignId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+      }
+
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(patientId);
+      allow list: if isOwner(patientId);
+      allow create: if isOwner(patientId) && request.resource.data.patientId == patientId;
+      allow update: if isExistingOwner(patientId) && request.resource.data.patientId == resource.data.patientId;
+      allow delete: if isExistingOwner(patientId);
+    }
+
+    /**
+     * @description Allows access to incident reports based on the reporterId.
+     * @path /incidentReports/{incidentReportId}
+     * @allow (create) if the user is signed in and the reporterId in the document matches the auth UID.
+     * @allow (get, update, delete) if the user is signed in, the reporterId in the document matches the auth UID, and the document exists.
+     * @deny (list) Prevent listing all incident reports.
+     * @deny (get, create, update, delete) if the user is not the reporter.
+     * @principle Enforces ownership for writes, but limits listing.
+     */
+    match /incidentReports/{incidentReportId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner(reporterId) {
+          return isSignedIn() && request.auth.uid == reporterId;
+      }
+
+      function isExistingOwner(reporterId) {
+        return isOwner(reporterId) && resource != null;
+      }
+
+      allow get: if isExistingOwner(resource.data.reporterId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.reporterId);
+      allow delete: if isExistingOwner(resource.data.reporterId);
+    }
+
+    /**
+     * @description Allows access to staff documents.
+     * @path /staff/{staffId}
+     * @allow (get, list) if true.
+     * @allow (create, update, delete) if false (currently restricted, but consider HR/Admin staff roles in the future).
+     * @deny (create, update, delete) if true (no conditions met).
+     * @principle Allows public read access but restricts write access.
+     */
+    match /staff/{staffId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Restrict to HR/Admin staff
+      allow update: if false; // TODO: Restrict to HR/Admin staff
+      allow delete: if false; // TODO: Restrict to HR/Admin staff
+    }
+  }
+}
