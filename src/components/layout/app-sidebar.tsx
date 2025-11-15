@@ -15,6 +15,7 @@ import {
   Route,
 } from "lucide-react";
 
+import { useUser } from "@/firebase";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/icons";
@@ -27,9 +28,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 
@@ -83,7 +81,10 @@ const SIDEBAR_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
   const avatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
+  const userInitials = user?.email?.charAt(0).toUpperCase() || "U";
+  
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 justify-center">
@@ -135,12 +136,12 @@ export function AppSidebar() {
           )}
         >
           <Avatar className="size-8">
-            {avatar && <AvatarImage src={avatar.imageUrl} alt="User Avatar" />}
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarImage src={user?.photoURL || avatar?.imageUrl} alt="User Avatar" />
+            <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-medium">Dr. Jane Doe</span>
-            <span className="text-xs text-muted-foreground">Cardiology</span>
+            <span className="text-sm font-medium">{user?.displayName || user?.email}</span>
+            <span className="text-xs text-muted-foreground">Staff</span>
           </div>
         </div>
       </SidebarFooter>
