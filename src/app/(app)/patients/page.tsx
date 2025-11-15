@@ -47,6 +47,13 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // --- MOCK DATA AND TYPES ---
 
@@ -167,7 +174,13 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
     if (!patient) return null;
 
     return (
-        <Card className="absolute bottom-0 left-0 right-0 z-20 w-full rounded-t-lg border-t-4 border-primary bg-background shadow-2xl">
+        <Card className={cn(
+            "fixed bottom-0 z-20 w-full rounded-t-lg border-t-4 border-primary bg-background shadow-2xl",
+            "md:left-[--sidebar-width] md:w-[calc(100vw_-_var(--sidebar-width))]",
+            "peer-data-[state=collapsed]:md:left-[--sidebar-width-icon] peer-data-[state=collapsed]:md:w-[calc(100vw_-_var(--sidebar-width-icon))]",
+            "peer-data-[variant=inset]:bottom-auto peer-data-[variant=inset]:md:left-[calc(var(--sidebar-width)_+_0.5rem)] peer-data-[variant=inset]:md:w-[calc(100vw_-_var(--sidebar-width)_-_1rem)] peer-data-[variant=inset]:md:rounded-lg",
+             "peer-data-[state=collapsed]:peer-data-[variant=inset]:md:left-[calc(var(--sidebar-width-icon)_+_0.5rem)] peer-data-[state=collapsed]:peer-data-[variant=inset]:md:w-[calc(100vw_-_var(--sidebar-width-icon)_-_1rem)]"
+            )}>
             <CardHeader className="p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -261,45 +274,10 @@ export default function PatientsPage() {
       acc[col] = mockPatients.filter(p => p.status === col);
       return acc;
     }, {} as Record<string, Patient[]>);
-  }, [mockPatients]);
+  }, []);
 
   return (
-    <div className="flex h-screen w-full bg-muted/40">
-        {/* Filters Sidebar */}
-        <aside className="hidden w-64 flex-col border-r bg-background p-4 md:flex">
-            <h2 className="text-lg font-semibold mb-4">Filters</h2>
-            <div className="space-y-4 text-sm">
-                <div className="space-y-2">
-                    <Label>Encounter Type</Label>
-                    <div className="flex items-center space-x-2"><Checkbox id="opd" defaultChecked/><Label htmlFor="opd">OPD (12)</Label></div>
-                    <div className="flex items-center space-x-2"><Checkbox id="emergency"/><Label htmlFor="emergency">Emergency (3)</Label></div>
-                    <div className="flex items-center space-x-2"><Checkbox id="inpatient"/><Label htmlFor="inpatient">Inpatient (1)</Label></div>
-                    <div className="flex items-center space-x-2"><Checkbox id="discharged"/><Label htmlFor="discharged">Discharged (34)</Label></div>
-                </div>
-                <Separator/>
-                <div className="space-y-2">
-                    <Label>Date</Label>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between">Today <ChevronDown className="size-4"/></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem>This Week</DropdownMenuItem>
-                            <DropdownMenuItem>This Month</DropdownMenuItem>
-                            <DropdownMenuItem>Custom Range</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-                 <Separator/>
-                 <div className="space-y-2">
-                    <Label>Quick Filters</Label>
-                    <div className="flex items-center space-x-2"><Checkbox id="critical"/><Label htmlFor="critical">Critical Alerts (1)</Label></div>
-                    <div className="flex items-center space-x-2"><Checkbox id="waiting"/><Label htmlFor="waiting">Waiting >30 min (0)</Label></div>
-                    <div className="flex items-center space-x-2"><Checkbox id="labs-pending"/><Label htmlFor="labs-pending">Labs Pending (1)</Label></div>
-                </div>
-            </div>
-        </aside>
-
+    <div className="flex h-screen w-full flex-col bg-muted/40">
         {/* Main Content */}
         <div className="flex flex-1 flex-col relative">
             <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
@@ -318,12 +296,47 @@ export default function PatientsPage() {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-x-auto p-4 pb-[250px]">
+            <main className="flex-1 overflow-x-auto p-4 pb-[300px]">
+                {/* Filters */}
+                <Card className="mb-4">
+                  <CardContent className="flex flex-wrap items-center gap-4 p-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Encounter:</Label>
+                      <Button variant="ghost" size="sm" className="h-7">OPD (12)</Button>
+                      <Button variant="ghost" size="sm" className="h-7">Emergency (3)</Button>
+                      <Button variant="ghost" size="sm" className="h-7">Inpatient (1)</Button>
+                      <Button variant="ghost" size="sm" className="h-7">Discharged (34)</Button>
+                    </div>
+                    <Separator orientation="vertical" className="h-6"/>
+                    <div className="flex items-center gap-2">
+                      <Label>Date:</Label>
+                       <Select defaultValue="today">
+                        <SelectTrigger className="h-7 w-auto text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="today">Today</SelectItem>
+                          <SelectItem value="this-week">This Week</SelectItem>
+                          <SelectItem value="this-month">This Month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Separator orientation="vertical" className="h-6"/>
+                     <div className="flex items-center gap-2 text-sm">
+                      <Label>Quick Filters:</Label>
+                       <div className="flex items-center space-x-2"><Checkbox id="critical"/><Label htmlFor="critical">Critical Alerts (1)</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="waiting"/><Label htmlFor="waiting">Waiting >30 min (0)</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="labs-pending"/><Label htmlFor="labs-pending">Labs Pending (1)</Label></div>
+                    </div>
+
+                  </CardContent>
+                </Card>
+
                 <div className="grid grid-cols-5 gap-4 min-w-[1200px]">
                     {kanbanColumns.map(col => (
                         <div key={col} className="bg-muted rounded-lg p-2">
                             <h3 className="font-semibold text-sm px-2 py-1">{col} ({patientsByColumn[col]?.length || 0})</h3>
-                            <div className="mt-2 space-y-2 h-[calc(100vh-250px)] overflow-y-auto">
+                            <div className="mt-2 space-y-2 h-[calc(100vh-360px)] overflow-y-auto">
                                 {patientsByColumn[col]?.map(p => (
                                     <PatientCard key={p.mrn} patient={p} onSelect={setSelectedPatient} />
                                 ))}
