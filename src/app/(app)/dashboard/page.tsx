@@ -25,10 +25,12 @@ import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { useToast } from '@/hooks/use-toast';
 import { DatePickerWithRange } from '@/components/reports/date-range-picker';
 import { Logo } from '@/components/icons';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const { user } = useUser();
   const auth = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const userInitials = user?.email?.charAt(0).toUpperCase() || 'U';
 
@@ -75,7 +77,7 @@ export default function DashboardPage() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => handlePlaceholderClick('Settings')}
+                  onClick={() => router.push('/settings')}
                 >
                   <Settings className="mr-2" />
                   Settings
