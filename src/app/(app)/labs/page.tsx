@@ -1,12 +1,22 @@
-import { Beaker, Microscope, TestTube, Filter, FileDown, Clock, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+'use client';
+import {
+  Beaker,
+  Microscope,
+  TestTube,
+  Filter,
+  FileDown,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -14,8 +24,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,64 +33,72 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const labResults = [
   {
-    orderId: "ORD-LAB-001",
-    patient: "Walter White",
-    test: "Complete Blood Count (CBC)",
-    orderedBy: "Dr. Goodman",
-    collectionTime: "2023-10-27 09:00",
-    status: "Completed",
+    orderId: 'ORD-LAB-001',
+    patient: 'Walter White',
+    test: 'Complete Blood Count (CBC)',
+    orderedBy: 'Dr. Goodman',
+    collectionTime: '2023-10-27 09:00',
+    status: 'Completed',
     isCritical: false,
   },
   {
-    orderId: "ORD-RAD-001",
-    patient: "Jesse Pinkman",
-    test: "Chest X-Ray, 2 Views",
-    orderedBy: "Dr. Fring",
-    collectionTime: "2023-10-27 09:15",
-    status: "Pending Results",
+    orderId: 'ORD-RAD-001',
+    patient: 'Jesse Pinkman',
+    test: 'Chest X-Ray, 2 Views',
+    orderedBy: 'Dr. Fring',
+    collectionTime: '2023-10-27 09:15',
+    status: 'Pending Results',
     isCritical: false,
   },
   {
-    orderId: "ORD-LAB-002",
-    patient: "Skyler White",
-    test: "Basic Metabolic Panel (BMP)",
-    orderedBy: "Dr. Goodman",
-    collectionTime: "2023-10-27 09:30",
-    status: "Processing",
+    orderId: 'ORD-LAB-002',
+    patient: 'Skyler White',
+    test: 'Basic Metabolic Panel (BMP)',
+    orderedBy: 'Dr. Goodman',
+    collectionTime: '2023-10-27 09:30',
+    status: 'Processing',
     isCritical: true,
   },
   {
-    orderId: "ORD-LAB-003",
-    patient: "Hank Schrader",
-    test: "Lipid Panel",
-    orderedBy: "Dr. Ehrmantraut",
-    collectionTime: "2023-10-27 10:00",
-    status: "Received",
+    orderId: 'ORD-LAB-003',
+    patient: 'Hank Schrader',
+    test: 'Lipid Panel',
+    orderedBy: 'Dr. Ehrmantraut',
+    collectionTime: '2023-10-27 10:00',
+    status: 'Received',
   },
   {
-    orderId: "ORD-RAD-002",
-    patient: "Saul Goodman",
-    test: "CT Head w/o contrast",
-    orderedBy: "Dr. Fring",
-    collectionTime: "2023-10-27 10:30",
-    status: "Collected",
+    orderId: 'ORD-RAD-002',
+    patient: 'Saul Goodman',
+    test: 'CT Head w/o contrast',
+    orderedBy: 'Dr. Fring',
+    collectionTime: '2023-10-27 10:30',
+    status: 'Collected',
   },
 ];
 
-const statusStyles = {
-  Completed: "bg-green-100 text-green-800",
-  "Pending Results": "bg-blue-100 text-blue-800",
-  Processing: "bg-yellow-100 text-yellow-800 animate-pulse",
-  Received: "bg-indigo-100 text-indigo-800",
-  Collected: "bg-purple-100 text-purple-800",
-  Ordered: "bg-gray-100 text-gray-800",
+const statusStyles: { [key: string]: string } = {
+  Completed: 'bg-green-100 text-green-800',
+  'Pending Results': 'bg-blue-100 text-blue-800',
+  Processing: 'bg-yellow-100 text-yellow-800 animate-pulse',
+  Received: 'bg-indigo-100 text-indigo-800',
+  Collected: 'bg-purple-100 text-purple-800',
+  Ordered: 'bg-gray-100 text-gray-800',
 };
-
 
 export default function LabsPage() {
   return (
@@ -95,8 +113,11 @@ export default function LabsPage() {
               Track and manage diagnostic test orders from order to result.
             </p>
           </div>
-           <div className="flex items-center gap-2">
-            <Input placeholder="Search by Patient Name or Order ID..." className="w-64"/>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search by Patient Name or Order ID..."
+              className="w-64"
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -106,21 +127,45 @@ export default function LabsPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {Object.keys(statusStyles).map(status => (
+                {Object.keys(statusStyles).map((status) => (
                   <DropdownMenuItem key={status}>{status}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button>
-              <TestTube className="mr-2" /> New Order
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <TestTube className="mr-2" /> New Order
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Lab/Radiology Order</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="patient-mrn">Patient MRN</Label>
+                    <Input id="patient-mrn" placeholder="Enter MRN..." />
+                  </div>
+                   <div className="space-y-1">
+                    <Label htmlFor="test-name">Test/Scan Name</Label>
+                    <Input id="test-name" placeholder="e.g., CBC, Chest X-Ray" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button className="w-full">Submit Order & Print Label</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </header>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Pending Lab Tests</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pending Lab Tests
+              </CardTitle>
               <Microscope className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -128,9 +173,11 @@ export default function LabsPage() {
               <p className="text-xs text-muted-foreground">3 are STAT orders</p>
             </CardContent>
           </Card>
-           <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Pending Radiology</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pending Radiology
+              </CardTitle>
               <Beaker className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -140,7 +187,9 @@ export default function LabsPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Lab TAT</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Avg. Lab TAT
+              </CardTitle>
               <Clock className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -150,12 +199,16 @@ export default function LabsPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Critical Results</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Critical Results
+              </CardTitle>
               <AlertTriangle className="size-5 text-red-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-500">2</div>
-              <p className="text-xs text-muted-foreground">Pending provider acknowledgement</p>
+              <p className="text-xs text-muted-foreground">
+                Pending provider acknowledgement
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -182,22 +235,72 @@ export default function LabsPage() {
               </TableHeader>
               <TableBody>
                 {labResults.map((order) => (
-                  <TableRow key={order.orderId} className={order.isCritical ? "bg-red-50" : ""}>
-                    <TableCell className="font-mono text-xs">{order.orderId}</TableCell>
+                  <TableRow
+                    key={order.orderId}
+                    className={order.isCritical ? 'bg-red-50' : ''}
+                  >
+                    <TableCell className="font-mono text-xs">
+                      {order.orderId}
+                    </TableCell>
                     <TableCell className="font-medium">{order.patient}</TableCell>
                     <TableCell>
-                      {order.isCritical && <AlertTriangle className="size-4 text-red-500 inline-block mr-2" />}
+                      {order.isCritical && (
+                        <AlertTriangle className="mr-2 inline-block size-4 text-red-500" />
+                      )}
                       {order.test}
-                      </TableCell>
+                    </TableCell>
                     <TableCell>{order.orderedBy}</TableCell>
                     <TableCell>{order.collectionTime}</TableCell>
                     <TableCell>
-                       <Badge className={statusStyles[order.status as keyof typeof statusStyles]}>
+                      <Badge
+                        className={
+                          statusStyles[order.status as keyof typeof statusStyles]
+                        }
+                      >
                         {order.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                       <Button variant="outline" size="sm">View</Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                           <Button variant="outline" size="sm">
+                            {order.status === "Completed" ? "View" : "Update"}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Lab Result for {order.patient}</DialogTitle>
+                            <DialogDescription>{order.test}</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label htmlFor="wbc">WBC</Label>
+                                <Input id="wbc" defaultValue="15.2" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor="rbc">RBC</Label>
+                                <Input id="rbc" defaultValue="4.8" />
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor="notes">Lab Tech Notes</Label>
+                              <Input id="notes" defaultValue="High white blood cell count indicates infection." />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Input type="checkbox" id="critical-result" className="h-4 w-4" defaultChecked={order.isCritical} />
+                                <Label htmlFor="critical-result" className="text-red-600 font-bold">Flag as CRITICAL result</Label>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline">Cancel</Button>
+                            <Button>
+                              <CheckCircle className="mr-2" />
+                              Finalize & Notify Doctor
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}

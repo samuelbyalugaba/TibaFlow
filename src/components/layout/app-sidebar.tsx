@@ -12,6 +12,7 @@ import {
   Settings,
   Siren,
   Users,
+  Route,
 } from "lucide-react";
 
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -37,6 +38,11 @@ const SIDEBAR_ITEMS = [
     href: "/dashboard",
     icon: LayoutDashboard,
     label: "Dashboard",
+  },
+  {
+    href: "/outpatient",
+    icon: Route,
+    label: "Outpatient",
   },
   {
     href: "/patients",

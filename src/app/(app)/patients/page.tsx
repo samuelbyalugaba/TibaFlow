@@ -8,6 +8,8 @@ import {
   Link as LinkIcon,
   Printer,
   MoreVertical,
+  FlaskConical,
+  Pill,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -35,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
@@ -51,6 +54,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 // Mock data - we'll replace this with real data later
 const mockPatients = [
@@ -70,12 +74,14 @@ const mockPatients = [
         type: 'OPD',
         date: '2023-10-26',
         chiefComplaint: 'Annual Checkup',
+        status: 'Discharged',
       },
       {
         id: 'ENC002',
-        type: 'ED',
-        date: '2024-01-15',
-        chiefComplaint: 'Chest Pain',
+        type: 'OPD',
+        date: '2024-07-22',
+        chiefComplaint: 'Fever and Cough',
+        status: 'Results Ready',
       },
     ],
   },
@@ -95,12 +101,23 @@ const mockPatients = [
         type: 'IPD',
         date: '2023-11-30',
         chiefComplaint: 'Pneumonia',
+        status: 'Discharged',
       },
     ],
   },
 ];
 
 type Patient = (typeof mockPatients)[0];
+type Encounter = Patient['encounters'][0];
+
+const statusColors: { [key: string]: string } = {
+  'Waiting for Doctor': 'bg-yellow-100 text-yellow-800',
+  'Labs Pending': 'bg-blue-100 text-blue-800',
+  'Results Ready': 'bg-purple-100 text-purple-800',
+  'Pharmacy Pickup': 'bg-orange-100 text-orange-800',
+  'Ready for Discharge': 'bg-green-100 text-green-800',
+  Discharged: 'bg-gray-100 text-gray-800',
+};
 
 export default function PatientsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -350,13 +367,14 @@ export default function PatientsPage() {
                         <TableHead>Type</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Chief Complaint</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>
                           <span className="sr-only">Actions</span>
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedPatient.encounters.map((enc) => (
+                      {selectedPatient.encounters.map((enc: Encounter) => (
                         <TableRow key={enc.id}>
                           <TableCell className="font-medium">
                             {enc.id}
@@ -373,26 +391,12 @@ export default function PatientsPage() {
                           <TableCell>{enc.date}</TableCell>
                           <TableCell>{enc.chiefComplaint}</TableCell>
                           <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  aria-haspopup="true"
-                                  size="icon"
-                                  variant="ghost"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                  <span className="sr-only">Toggle menu</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  View Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  Add Note
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <Badge className={statusColors[enc.status]}>
+                              {enc.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <EncounterActions encounter={enc} patient={selectedPatient}/>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -418,4 +422,106 @@ export default function PatientsPage() {
       </main>
     </div>
   );
+}
+
+function EncounterActions({ encounter, patient }: { encounter: Encounter, patient: Patient }) {
+  const [isLabModalOpen, setLabModalOpen] = useState(false);
+  const [isRxModalOpen, setRxModalOpen] = useState(false);
+  
+  const getAction = () => {
+    switch (encounter.status) {
+      case 'Results Ready':
+        return (
+          <>
+            <Button size="sm" onClick={() => setRxModalOpen(true)}>
+              <Pill className="mr-2" />
+              e-Prescribe
+            </Button>
+            <Dialog open={isRxModalOpen} onOpenChange={setRxModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create e-Prescription for {patient.name}</DialogTitle>
+                  <CardDescription>Final Diagnosis: Fever and Cough</CardDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label htmlFor="medication">Medication</Label>
+                    <Input id="medication" placeholder="e.g., Amoxicillin 500mg" />
+                  </div>
+                  <div>
+                    <Label htmlFor="dosage">Dosage</Label>
+                    <Input id="dosage" placeholder="e.g., 1 tablet 3 times a day for 7 days" />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes for Pharmacist</Label>
+                    <Textarea id="notes" placeholder="Any special instructions..." />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setRxModalOpen(false)} className="w-full">Send to Pharmacy</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        );
+      case 'Waiting for Doctor':
+      case 'Labs Pending':
+        return (
+           <>
+            <Button size="sm" onClick={() => setLabModalOpen(true)}>
+              <FlaskConical className="mr-2" />
+              Order Labs
+            </Button>
+             <Dialog open={isLabModalOpen} onOpenChange={setLabModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Order Labs for {patient.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center space-x-2">
+                     <Input id="cbc" type="checkbox" className="h-4 w-4"/>
+                    <Label htmlFor="cbc">Complete Blood Count (CBC)</Label>
+                  </div>
+                   <div className="flex items-center space-x-2">
+                     <Input id="bmp" type="checkbox" className="h-4 w-4"/>
+                    <Label htmlFor="bmp">Basic Metabolic Panel (BMP)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                     <Input id="malaria" type="checkbox" className="h-4 w-4"/>
+                    <Label htmlFor="malaria">Malaria Smear</Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setLabModalOpen(false)} className="w-full">Submit Order & Print Label</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        )
+      case 'Ready for Discharge':
+         return (
+            <Button size="sm">
+              <DollarSign className="mr-2" />
+              Generate Invoice
+            </Button>
+        )
+      default:
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button aria-haspopup="true" size="icon" variant="ghost">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>View Details</DropdownMenuItem>
+              <DropdownMenuItem>Add Note</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+    }
+  };
+
+  return getAction();
 }
