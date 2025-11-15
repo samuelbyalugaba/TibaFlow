@@ -51,8 +51,8 @@ service cloud.firestore {
         return isOwner(userId) && resource != null;
       }
 
-      allow get: if true; // Allow public read access for prototyping. In production, restrict this to the patient or authorized staff.
-      allow list: if false; // Prevent listing all patients, which could expose sensitive information.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // Allow listing for any authenticated user for now.
       allow create: if isOwner(patientId);
       allow update: if isExistingOwner(patientId);
       allow delete: if isExistingOwner(patientId);
