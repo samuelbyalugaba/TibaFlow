@@ -167,7 +167,7 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
     if (!patient) return null;
 
     return (
-        <Card className="fixed bottom-0 left-0 right-0 z-20 w-full rounded-t-lg border-t-4 border-primary shadow-2xl">
+        <Card className="absolute bottom-0 left-0 right-0 z-20 w-full rounded-t-lg border-t-4 border-primary bg-background shadow-2xl">
             <CardHeader className="p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -301,7 +301,7 @@ export default function PatientsPage() {
         </aside>
 
         {/* Main Content */}
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col relative">
             <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
                 <div className="flex items-center gap-4">
                     <h1 className="font-headline text-xl font-bold">Patients</h1>
@@ -318,7 +318,7 @@ export default function PatientsPage() {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-x-auto p-4">
+            <main className="flex-1 overflow-x-auto p-4 pb-[250px]">
                 <div className="grid grid-cols-5 gap-4 min-w-[1200px]">
                     {kanbanColumns.map(col => (
                         <div key={col} className="bg-muted rounded-lg p-2">
@@ -332,9 +332,9 @@ export default function PatientsPage() {
                     ))}
                 </div>
             </main>
-        </div>
         <NewPatientModal open={isRegistering} onOpenChange={setIsRegistering} />
         <SelectedPatientTimeline patient={selectedPatient} />
+        </div>
     </div>
   );
 }
