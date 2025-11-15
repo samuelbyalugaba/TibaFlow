@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Patient": {
@@ -39,6 +40,18 @@
         "address": {
           "type": "string",
           "description": "Patient's address."
+        },
+        "tasks": {
+            "type": "array",
+            "description": "List of nursing tasks for the patient.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": { "type": "string" },
+                    "completed": { "type": "boolean" }
+                },
+                "required": ["description", "completed"]
+            }
         }
       },
       "required": [

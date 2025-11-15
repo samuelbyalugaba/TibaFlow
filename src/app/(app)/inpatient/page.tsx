@@ -48,11 +48,27 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
+type Task = {
+  description: string;
+  completed: boolean;
+};
 
 type Patient = {
   id: string;
@@ -61,9 +77,10 @@ type Patient = {
   bed: string;
   admissionDate: string;
   dx: string;
-  status: string;
+  status: 'Stable' | 'Critical' | 'Observation' | 'Discharge Pending' | 'Discharged';
   bedStatus: 'Occupied' | 'Clean' | 'Dirty' | 'Blocked';
-  encounterType: string;
+  encounterType: 'Inpatient' | 'Discharged';
+  tasks?: Task[];
 };
 
 const statusColors = {
@@ -71,6 +88,7 @@ const statusColors = {
   Critical: 'bg-red-100 text-red-800 animate-pulse',
   Observation: 'bg-yellow-100 text-yellow-800',
   'Discharge Pending': 'bg-blue-100 text-blue-800',
+  'Discharged': 'bg-gray-100 text-gray-800',
 };
 
 const bedStatusColors = {
@@ -88,6 +106,14 @@ const wards = [
     { name: 'Maternity', prefix: 'MAT', totalBeds: 20 },
 ];
 
+const defaultTasks: Task[] = [
+    { description: 'Administer Morning Meds', completed: false },
+    { description: 'Check Vitals (Q4H)', completed: false },
+    { description: 'Ambulate Patient in Hallway', completed: false },
+    { description: 'Change Wound Dressing', completed: false },
+    { description: 'Patient/Family Education', completed: false },
+];
+
 export default function InpatientPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -98,6 +124,10 @@ export default function InpatientPage() {
   const [isAdmitting, setIsAdmitting] = useState(false);
   const [admitMrn, setAdmitMrn] = useState('');
   const [admitBed, setAdmitBed] = useState('');
+
+  const [selectedPatientForTasks, setSelectedPatientForTasks] = useState<Patient | null>(null);
+  const [currentTasks, setCurrentTasks] = useState<Task[]>([]);
+  const [customTask, setCustomTask] = useState('');
 
 
   const inpatientPatients = allPatients?.filter(p => p.encounterType === 'Inpatient');
@@ -120,13 +150,6 @@ export default function InpatientPage() {
   const totalBeds = wards.reduce((sum, ward) => sum + (ward.totalBeds || 0), 0);
   const totalOccupied = inpatientPatients?.length || 0;
   const overallOccupancy = totalBeds > 0 ? (totalOccupied / totalBeds) * 100 : 0;
-
-  const handlePlaceholderClick = (feature: string) => {
-    toast({
-        title: "Feature not implemented",
-        description: `${feature} is coming soon.`,
-    });
-  };
 
   const handleDirectAdmit = () => {
     if (!admitMrn || !admitBed) {
@@ -166,6 +189,51 @@ export default function InpatientPage() {
     setIsAdmitting(false);
     setAdmitMrn('');
     setAdmitBed('');
+  };
+
+  const handleOpenTasks = (patient: Patient) => {
+    setSelectedPatientForTasks(patient);
+    const patientTasks = patient.tasks && patient.tasks.length > 0 ? patient.tasks : defaultTasks.map(t => ({...t}));
+    setCurrentTasks(patientTasks);
+  };
+  
+  const handleTaskChange = (index: number, checked: boolean) => {
+      const newTasks = [...currentTasks];
+      newTasks[index].completed = checked;
+      setCurrentTasks(newTasks);
+  };
+
+  const handleAddCustomTask = () => {
+      if (customTask.trim()) {
+          setCurrentTasks([...currentTasks, { description: customTask, completed: false }]);
+          setCustomTask('');
+      }
+  };
+
+  const handleSaveTasks = () => {
+      if (!selectedPatientForTasks) return;
+      const patientDocRef = doc(firestore, 'patients', selectedPatientForTasks.id);
+      updateDocumentNonBlocking(patientDocRef, { tasks: currentTasks });
+      toast({
+          title: 'Tasks Updated',
+          description: `Tasks for ${selectedPatientForTasks.name} have been saved.`,
+      });
+      setSelectedPatientForTasks(null);
+  };
+
+  const handleDischarge = (patient: Patient) => {
+      const patientDocRef = doc(firestore, 'patients', patient.id);
+      const updateData = {
+          status: 'Discharged',
+          encounterType: 'Discharged',
+          bedStatus: 'Dirty', // Mark bed for cleaning
+      };
+      updateDocumentNonBlocking(patientDocRef, updateData);
+
+      toast({
+          title: 'Patient Discharged',
+          description: `${patient.name} has been discharged. Bed ${patient.bed} is now marked as dirty.`
+      });
   };
   
   if (isLoading) {
@@ -329,12 +397,55 @@ export default function InpatientPage() {
                     <TableCell className="text-right">
                        {p.name && (
                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handlePlaceholderClick('Tasks')}>
-                                <ClipboardList className="mr-1 size-4" /> Tasks
-                            </Button>
-                             <Button variant="outline" size="sm" onClick={() => handlePlaceholderClick('Discharge')}>
-                                <LogOut className="mr-1 size-4" /> Discharge
-                            </Button>
+                            <Dialog open={selectedPatientForTasks?.id === p.id} onOpenChange={(open) => !open && setSelectedPatientForTasks(null)}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" onClick={() => handleOpenTasks(p)}>
+                                        <ClipboardList className="mr-1 size-4" /> Tasks
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Nursing Tasks for {selectedPatientForTasks?.name}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-2 py-4">
+                                        {currentTasks.map((task, index) => (
+                                            <div key={index} className="flex items-center space-x-2">
+                                                <Checkbox id={`task-${index}`} checked={task.completed} onCheckedChange={(checked) => handleTaskChange(index, !!checked)} />
+                                                <Label htmlFor={`task-${index}`}>{task.description}</Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex w-full gap-2">
+                                        <Input placeholder="Add custom task..." value={customTask} onChange={(e) => setCustomTask(e.target.value)} />
+                                        <Button onClick={handleAddCustomTask}>Add</Button>
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button type="button" variant="secondary">Cancel</Button>
+                                        </DialogClose>
+                                        <Button onClick={handleSaveTasks}>Save Tasks</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                             <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <LogOut className="mr-1 size-4" /> Discharge
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Discharge {p.name}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will discharge the patient from their bed and mark it for cleaning. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDischarge(p)}>Confirm Discharge</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                          </div>
                        )}
                     </TableCell>
