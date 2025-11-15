@@ -39,38 +39,26 @@ export default function LoginPage() {
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
-    try {
-      initiateEmailSignIn(auth, email, password);
-      toast({
-        title: 'Signing In...',
-        description: 'You will be redirected shortly.',
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign-in Failed',
-        description: error.message,
-      });
-      setIsSigningIn(false);
-    }
+    initiateEmailSignIn(auth, email, password);
+    // We don't await here. The onAuthStateChanged listener handles success.
+    // The catch block in initiateEmailSignIn handles errors.
+    // We'll optimistically show a toast.
+    toast({
+      title: 'Signing In...',
+      description: 'You will be redirected shortly if credentials are valid.',
+    });
+    // We'll let the UI handle the loading state, but we should reset it if the component is still mounted after a while
+    setTimeout(() => setIsSigningIn(false), 3000); 
   };
 
   const handleSignUp = async () => {
     setIsSigningUp(true);
-    try {
-      initiateEmailSignUp(auth, email, password);
-      toast({
-        title: 'Signing Up...',
-        description: 'Account created. You will be logged in and redirected.',
-      });
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Sign-up Failed',
-        description: error.message,
-      });
-      setIsSigningUp(false);
-    }
+    initiateEmailSignUp(auth, email, password);
+    toast({
+      title: 'Signing Up...',
+      description: 'Account created. You will be logged in and redirected.',
+    });
+    setTimeout(() => setIsSigningUp(false), 3000);
   };
 
   return (
