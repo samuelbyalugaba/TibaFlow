@@ -69,7 +69,7 @@ export default function LoginPage() {
           <div className="mb-4 flex justify-center">
             <Logo className="size-10 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-headline">MediChain</CardTitle>
+          <CardTitle className="text-2xl font-headline">TibaFlow</CardTitle>
           <CardDescription>
             Enter your credentials to access the hospital system.
           </CardDescription>

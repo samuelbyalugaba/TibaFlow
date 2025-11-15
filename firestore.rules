@@ -1,5 +1,5 @@
 /**
- * @fileoverview Firestore Security Rules for MediChain Application
+ * @fileoverview Firestore Security Rules for TibaFlow Application
  *
  * Core Philosophy:
  * This ruleset enforces a strict ownership model for patient-related data, where only the patient (or authorized staff) can access their information.

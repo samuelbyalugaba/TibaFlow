@@ -90,7 +90,7 @@ export function AppSidebar() {
       <SidebarHeader className="h-16 justify-center">
         <Logo className="size-7 text-primary" />
         <span className="font-headline text-lg font-semibold tracking-tight text-primary">
-          MediChain
+          TibaFlow
         </span>
       </SidebarHeader>
 

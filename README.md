@@ -1,6 +1,6 @@
-# MediChain: Integrated Hospital Management System
+# TibaFlow: Integrated Hospital Management System
 
-MediChain is a modern, real-time hospital management platform designed to streamline clinical, operational, and administrative workflows. Built on a robust, cloud-native architecture using Next.js and Firebase, it provides a unified and intuitive experience for healthcare professionals to manage patient care from admission to discharge.
+TibaFlow is a modern, real-time hospital management platform designed to streamline clinical, operational, and administrative workflows. Built on a robust, cloud-native architecture using Next.js and Firebase, it provides a unified and intuitive experience for healthcare professionals to manage patient care from admission to discharge.
 
 ## Key Features
 
