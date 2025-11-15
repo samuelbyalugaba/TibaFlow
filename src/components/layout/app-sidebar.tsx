@@ -88,7 +88,7 @@ export function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 justify-center">
-        <Logo className="size-16" />
+        <Logo className="size-32" />
       </SidebarHeader>
 
       <SidebarContent>
