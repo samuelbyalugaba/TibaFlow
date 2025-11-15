@@ -345,8 +345,8 @@ export default function PatientsPage() {
     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
     
     const getTimelineItemStatus = (step: TimelineStep, status: string) => {
-      const isCurrentStep = patient.timeline.findIndex(s => s.step === step.step)
-      const newStatusIndex = patient.timeline.findIndex(s => s.step.replace(/\s/g, '') === status.replace(/\s/g, ''));
+      const isCurrentStep = selectedPatient.timeline.findIndex(s => s.step === step.step)
+      const newStatusIndex = selectedPatient.timeline.findIndex(s => s.step.replace(/\s/g, '') === status.replace(/\s/g, ''));
       
       if(isCurrentStep < newStatusIndex) return 'completed';
       if(isCurrentStep === newStatusIndex) return 'processing';
