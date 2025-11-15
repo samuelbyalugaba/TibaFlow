@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -37,12 +36,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -55,120 +48,46 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast"
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
-// --- MOCK DATA AND TYPES ---
+// --- DATA TYPES ---
 
-const initialPatients = [
-  {
-    mrn: 'TZ-2025-1101',
-    name: 'Amina Hassan',
-    dob: '1997-03-15',
-    sex: 'F',
-    age: 28,
-    bloodType: 'O+',
-    photo: 'https://picsum.photos/seed/patient1/100/100',
-    phone: '+255 784 123 456',
-    status: 'Labs',
-    doctor: 'Dr. Juma',
-    waitTime: 12,
-    criticalAlert: 'K+ 6.2 (Critical)',
-    lastAction: 'Sample Collected',
-    lastActionTimestamp: '09:25',
-    encounterType: 'OPD',
-    timeline: [
-      { step: 'Registered', time: '09:00', by: 'Fatuma', status: 'completed' },
-      { step: 'Vitals', time: '09:15', by: 'Nurse Akida', status: 'completed', details: 'BP 140/90, Temp 38.1°C' },
-      { step: 'Labs Ordered', time: '09:20', by: 'Dr. Juma', status: 'completed', details: 'CBC, Malaria RDT' },
-      { step: 'Sample Collected', time: '09:25', by: 'Lab Tech Ali', status: 'processing' },
-      { step: 'Results Ready', time: '09:45', by: 'Lab System', status: 'pending', details: 'Hb 9.8, Malaria (+), K+ 6.2' },
-      { step: 'e-Prescription', time: '09:52', by: 'Dr. Juma', status: 'pending', details: 'Artemether 80mg, Calcium Gluconate' },
-      { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
-      { step: 'Billing', time: null, by: 'Reception', status: 'pending', details: 'TZS 28,000' },
-      { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
-    ],
-  },
-  {
-    mrn: 'TZ-2025-1102',
-    name: 'John Williams',
-    dob: '1982-08-25',
-    sex: 'M',
-    age: 42,
-    bloodType: 'A-',
-    photo: 'https://picsum.photos/seed/patient2/100/100',
-    phone: '+255 688 987 654',
-    status: 'In Progress',
-    doctor: 'Dr. Evelyn',
-    waitTime: 5,
-    criticalAlert: null,
-    lastAction: 'Vitals Taken',
-    lastActionTimestamp: '10:05',
-    encounterType: 'OPD',
-    timeline: [
-        { step: 'Registered', time: '10:00', by: 'Fatuma', status: 'completed' },
-        { step: 'Vitals', time: '10:05', by: 'Nurse Akida', status: 'processing' },
-        { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
-        { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
-        { step: 'Billing', time: null, by: 'Reception', status: 'pending' },
-        { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
-    ]
-  },
-    {
-    mrn: 'TZ-2025-1103',
-    name: 'Maria Sanchez',
-    dob: '2001-01-20',
-    sex: 'F',
-    age: 24,
-    bloodType: 'B+',
-    photo: 'https://picsum.photos/seed/patient3/100/100',
-    phone: '+255 715 111 222',
-    status: 'Queue',
-    doctor: 'Dr. Juma',
-    waitTime: 2,
-    criticalAlert: null,
-    lastAction: 'Registered',
-    lastActionTimestamp: '10:10',
-    encounterType: 'OPD',
-    timeline: [
-        { step: 'Registered', time: '10:10', by: 'Fatuma', status: 'processing' },
-        { step: 'Vitals', time: null, by: 'Nurse', status: 'pending' },
-        { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
-        { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
-        { step: 'Billing', time: null, by: 'Reception', status: 'pending' },
-        { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
-    ]
-  },
-  {
-    mrn: 'TZ-2025-1104',
-    name: 'David Chen',
-    dob: '1975-11-30',
-    sex: 'M',
-    age: 48,
-    bloodType: 'AB+',
-    photo: 'https://picsum.photos/seed/patient4/100/100',
-    phone: '+255 765 432 109',
-    status: 'Done',
-    doctor: 'Dr. Evelyn',
-    waitTime: 45,
-    criticalAlert: null,
-    lastAction: 'Discharged',
-    lastActionTimestamp: '11:00',
-    encounterType: 'Discharged',
-    timeline: [
-      { step: 'Registered', time: '10:15', by: 'Fatuma', status: 'completed' },
-      { step: 'Vitals', time: '10:20', by: 'Nurse', status: 'completed' },
-      { step: 'Labs Ordered', time: '10:25', by: 'Dr. Evelyn', status: 'completed' },
-      { step: 'Results Ready', time: '10:45', by: 'Lab', status: 'completed' },
-      { step: 'Billing', time: '10:55', by: 'Reception', status: 'completed' },
-      { step: 'Discharged', time: '11:00', by: 'Reception', status: 'completed' },
-    ]
-  },
-];
+// Base types from backend.json
+type PatientEntity = {
+    mrn: string;
+    name: string;
+    dob: string;
+    sex: string;
+    age: number;
+    bloodType: string;
+    photo: string;
+    phone: string;
+    status: string;
+    doctor: string;
+    waitTime: number;
+    criticalAlert: string | null;
+    lastAction: string;
+    lastActionTimestamp: string;
+    encounterType: string;
+    timeline: TimelineStep[];
+};
+
+type TimelineStep = {
+    step: string;
+    time: string | null;
+    by: string;
+    status: 'completed' | 'processing' | 'pending';
+    details?: string;
+};
+
+// Firestore document type
+type Patient = PatientEntity & { id: string };
 
 const kanbanColumns = ['Queue', 'In Progress', 'Labs', 'Pharmacy', 'Done'];
 
-type Patient = (typeof initialPatients)[0];
-type TimelineStep = Patient['timeline'][0];
 
 const getBorderColor = (patient: Patient) => {
   if (patient.criticalAlert) return 'border-red-500';
@@ -214,7 +133,7 @@ function PatientCard({ patient, onSelect }: { patient: Patient, onSelect: (p: Pa
   );
 }
 
-function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Patient | null, onAction: (action: string) => void, onSelect: (p: Patient | null) => void }) {
+function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Patient | null, onAction: (action: string, newStatus: string) => void, onSelect: (p: Patient | null) => void }) {
     const { toast } = useToast();
     if (!patient) return null;
 
@@ -225,30 +144,8 @@ function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Pat
         });
     };
 
-    const getTimelineItemStatus = (step: TimelineStep, newStatus: string) => {
-      const isCurrentStep = patient.status.replace(/\s/g, '') === step.step.replace(/\s/g, '');
-      const nextStepIndex = patient.timeline.findIndex(s => s.step === step.step) + 1;
-      const nextStep = patient.timeline[nextStepIndex];
-      
-      if(nextStep?.step.replace(/\s/g, '') === newStatus.replace(/\s/g, '')) {
-         return 'completed';
-      }
-
-      if(step.step.replace(/\s/g, '') === newStatus.replace(/\s/g, '')) {
-          return 'processing';
-      }
-      return step.status;
-    }
-
     const handlePatientUpdate = (newStatus: string, actionText: string) => {
-      onAction(actionText);
-      onSelect({
-        ...patient,
-        status: newStatus,
-        lastAction: actionText,
-        lastActionTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
-        timeline: patient.timeline.map(step => ({...step, status: getTimelineItemStatus(step, newStatus)}))
-      });
+      onAction(actionText, newStatus);
     }
 
     return (
@@ -270,7 +167,7 @@ function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Pat
                     </div>
                      <div className="text-right">
                         <p className="text-sm">Assigned: <span className="font-semibold">{patient.doctor}</span></p>
-                        <p className="text-sm text-muted-foreground">Arrived: 09:00 | Wait: {patient.waitTime} min</p>
+                        <p className="text-sm text-muted-foreground">Arrived: {patient.timeline[0].time} | Wait: {patient.waitTime} min</p>
                     </div>
                 </div>
             </CardHeader>
@@ -307,35 +204,39 @@ function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Pat
     );
 }
 
-function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, onOpenChange: (open: boolean) => void, onRegister: (patient: Patient) => void }) {
+function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, onOpenChange: (open: boolean) => void, onRegister: (patient: Partial<PatientEntity>) => void }) {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-      firstName: '',
-      lastName: '',
+      name: '',
       dob: '',
       phone: '',
-      nationalId: '',
+      sex: 'M',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const { id, value } = e.target;
       setFormData(prev => ({...prev, [id]: value}));
   };
+  
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({...prev, sex: value}));
+  };
 
   const handleRegister = () => {
-    if (!formData.firstName || !formData.lastName) {
+    if (!formData.name) {
         toast({
             variant: "destructive",
             title: "Registration Error",
-            description: "First and last name are required."
+            description: "Name is required."
         });
         return;
     }
-    const newPatient: Patient = {
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
+    const newPatient: Partial<PatientEntity> = {
         mrn: `TZ-2025-${Math.floor(Math.random() * 9000) + 1000}`,
-        name: `${formData.firstName} ${formData.lastName}`,
+        name: formData.name,
         dob: formData.dob,
-        sex: 'M',
+        sex: formData.sex,
         age: formData.dob ? new Date().getFullYear() - new Date(formData.dob).getFullYear() : 0,
         bloodType: 'O+',
         photo: `https://picsum.photos/seed/${Math.random()}/100/100`,
@@ -345,10 +246,10 @@ function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, on
         waitTime: 1,
         criticalAlert: null,
         lastAction: 'Registered',
-        lastActionTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
+        lastActionTimestamp: currentTime,
         encounterType: 'OPD',
         timeline: [
-            { step: 'Registered', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}), by: 'Fatuma', status: 'processing' },
+            { step: 'Registered', time: currentTime, by: 'Fatuma', status: 'processing' },
             { step: 'Vitals', time: null, by: 'Nurse', status: 'pending' },
             { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
             { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
@@ -362,7 +263,7 @@ function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, on
         description: `${newPatient.name} has been added to the queue.`
     })
     onOpenChange(false);
-    setFormData({ firstName: '', lastName: '', dob: '', phone: '', nationalId: ''});
+    setFormData({ name: '', dob: '', phone: '', sex: 'M'});
   };
 
   return (
@@ -379,14 +280,21 @@ function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, on
             <Button variant="outline" size="sm" onClick={() => toast({ title: "Upload Photo clicked" })}>Upload Photo</Button>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1"><Label htmlFor="firstName">First Name</Label><Input id="firstName" value={formData.firstName} onChange={handleChange} /></div>
-            <div className="space-y-1"><Label htmlFor="lastName">Last Name</Label><Input id="lastName" value={formData.lastName} onChange={handleChange} /></div>
+            <div className="space-y-1"><Label htmlFor="name">Full Name</Label><Input id="name" value={formData.name} onChange={handleChange} /></div>
+             <div className="space-y-1"><Label htmlFor="phone">Phone</Label><Input id="phone" placeholder="+255..." value={formData.phone} onChange={handleChange}/></div>
           </div>
            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1"><Label htmlFor="dob">Date of Birth</Label><Input id="dob" type="date" value={formData.dob} onChange={handleChange}/></div>
-            <div className="space-y-1"><Label htmlFor="phone">Phone</Label><Input id="phone" placeholder="+255..." value={formData.phone} onChange={handleChange}/></div>
+            <div className="space-y-1"><Label htmlFor="sex">Sex</Label>
+              <Select onValueChange={handleSelectChange} defaultValue={formData.sex}>
+                <SelectTrigger id="sex"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">Male</SelectItem>
+                  <SelectItem value="F">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1"><Label htmlFor="nationalId">National ID</Label><Input id="nationalId" value={formData.nationalId} onChange={handleChange}/></div>
         </div>
         <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -401,8 +309,11 @@ function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, on
 // --- MAIN PAGE COMPONENT ---
 
 export default function PatientsPage() {
-  const [patients, setPatients] = useState<Patient[]>(initialPatients);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(initialPatients[0]);
+  const firestore = useFirestore();
+  const patientsCollectionRef = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
+  const { data: patients, isLoading } = useCollection<Patient>(patientsCollectionRef);
+  
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeEncounterFilter, setActiveEncounterFilter] = useState('OPD');
@@ -413,44 +324,72 @@ export default function PatientsPage() {
   });
   const { toast } = useToast();
 
-  const handleRegisterPatient = (newPatient: Patient) => {
-      setPatients(prev => [newPatient, ...prev]);
+  useEffect(() => {
+    // Set initial selected patient when data loads
+    if (!selectedPatient && patients && patients.length > 0) {
+      setSelectedPatient(patients[0]);
+    }
+  }, [patients, selectedPatient]);
+
+  const handleRegisterPatient = (newPatientData: Partial<PatientEntity>) => {
+      addDocumentNonBlocking(patientsCollectionRef, newPatientData);
   };
   
   const handleQuickFilterChange = (filter: keyof typeof quickFilters) => {
     setQuickFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
   };
 
-  const handleUpdatePatient = (updatedPatient: Patient) => {
-    setPatients(prev => prev.map(p => p.mrn === updatedPatient.mrn ? updatedPatient : p));
-    setSelectedPatient(updatedPatient);
-  }
+  const handleAction = (actionText: string, newStatus: string) => {
+    if (!selectedPatient) return;
 
-  const handleAction = (action: string) => {
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
+    
+    const getTimelineItemStatus = (step: TimelineStep, status: string) => {
+      const isCurrentStep = patient.timeline.findIndex(s => s.step === step.step)
+      const newStatusIndex = patient.timeline.findIndex(s => s.step.replace(/\s/g, '') === status.replace(/\s/g, ''));
+      
+      if(isCurrentStep < newStatusIndex) return 'completed';
+      if(isCurrentStep === newStatusIndex) return 'processing';
+      
+      return 'pending';
+    }
+    
+    const updatedPatient: Patient = {
+      ...selectedPatient,
+      status: newStatus,
+      lastAction: actionText,
+      lastActionTimestamp: currentTime,
+      timeline: selectedPatient.timeline.map(step => ({
+        ...step,
+        status: getTimelineItemStatus(step, newStatus),
+        time: step.status === 'pending' && getTimelineItemStatus(step, newStatus) === 'processing' ? currentTime : step.time,
+      }))
+    };
+    
+    const patientDocRef = doc(firestore, 'patients', selectedPatient.id);
+    updateDocumentNonBlocking(patientDocRef, updatedPatient);
+
+    setSelectedPatient(updatedPatient);
+
     toast({
-        title: `Action: ${action}`,
-        description: `Patient ${selectedPatient?.name} moved to next stage.`
+        title: `Action: ${actionText}`,
+        description: `Patient ${selectedPatient?.name} moved to ${newStatus}.`
     });
   };
 
   const filteredPatients = useMemo(() => {
+    if (!patients) return [];
     return patients
       .filter(p => {
-        // Encounter Type Filter
-        if (activeEncounterFilter === 'OPD') return p.encounterType === 'OPD';
-        if (activeEncounterFilter === 'Discharged') return p.encounterType === 'Discharged';
         if (activeEncounterFilter === 'All') return true;
-        // Add other encounter types here...
-        return p.encounterType === activeEncounterFilter; // fallback
+        return p.encounterType === activeEncounterFilter;
       })
       .filter(p => {
-        // Search Filter
         if (!searchTerm) return true;
         const lowerSearch = searchTerm.toLowerCase();
         return p.name.toLowerCase().includes(lowerSearch) || p.mrn.toLowerCase().includes(lowerSearch);
       })
       .filter(p => {
-        // Quick Filters
         if (quickFilters.critical && !p.criticalAlert) return false;
         if (quickFilters.waiting && p.waitTime <= 30) return false;
         if (quickFilters.labsPending && p.status !== 'Labs') return false;
@@ -465,17 +404,27 @@ export default function PatientsPage() {
     }, {} as Record<string, Patient[]>);
   }, [filteredPatients]);
   
-  const encounterCounts = useMemo(() => ({
-    opd: patients.filter(p => p.encounterType === 'OPD').length,
-    emergency: patients.filter(p => p.encounterType === 'Emergency').length,
-    inpatient: patients.filter(p => p.encounterType === 'Inpatient').length,
-    discharged: patients.filter(p => p.encounterType === 'Discharged').length,
-    all: patients.length,
-  }), [patients]);
+  const encounterCounts = useMemo(() => {
+    if (!patients) return { opd: 0, emergency: 0, inpatient: 0, discharged: 0, all: 0 };
+    return {
+        opd: patients.filter(p => p.encounterType === 'OPD').length,
+        emergency: patients.filter(p => p.encounterType === 'Emergency').length,
+        inpatient: patients.filter(p => p.encounterType === 'Inpatient').length,
+        discharged: patients.filter(p => p.encounterType === 'Discharged').length,
+        all: patients.length,
+      }
+  }, [patients]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center bg-muted/40">
+        <p>Loading patient data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full flex-col bg-muted/40">
-        {/* Main Content */}
         <div className="flex flex-1 flex-col relative">
             <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-4 border-b bg-background px-6">
                 <div className="flex items-center gap-4">
@@ -494,7 +443,6 @@ export default function PatientsPage() {
             </header>
 
             <main className="flex-1 overflow-x-auto p-4 pb-[300px]">
-                {/* Filters */}
                 <Card className="mb-4">
                   <CardContent className="flex flex-wrap items-center gap-4 p-2">
                     <div className="flex items-center gap-2">
@@ -522,9 +470,9 @@ export default function PatientsPage() {
                     <Separator orientation="vertical" className="h-6"/>
                      <div className="flex items-center gap-2 text-sm">
                       <Label>Quick Filters:</Label>
-                       <div className="flex items-center space-x-2"><Checkbox id="critical" checked={quickFilters.critical} onCheckedChange={() => handleQuickFilterChange('critical')}/><Label htmlFor="critical">Critical Alerts ({patients.filter(p=>p.criticalAlert).length})</Label></div>
-                       <div className="flex items-center space-x-2"><Checkbox id="waiting" checked={quickFilters.waiting} onCheckedChange={() => handleQuickFilterChange('waiting')} /><Label htmlFor="waiting">Waiting >30 min ({patients.filter(p=>p.waitTime > 30).length})</Label></div>
-                       <div className="flex items-center space-x-2"><Checkbox id="labs-pending" checked={quickFilters.labsPending} onCheckedChange={() => handleQuickFilterChange('labsPending')} /><Label htmlFor="labs-pending">Labs Pending ({patients.filter(p=>p.status === 'Labs').length})</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="critical" checked={quickFilters.critical} onCheckedChange={() => handleQuickFilterChange('critical')}/><Label htmlFor="critical">Critical Alerts ({patients?.filter(p=>p.criticalAlert).length || 0})</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="waiting" checked={quickFilters.waiting} onCheckedChange={() => handleQuickFilterChange('waiting')} /><Label htmlFor="waiting">Waiting >30 min ({patients?.filter(p=>p.waitTime > 30).length || 0})</Label></div>
+                       <div className="flex items-center space-x-2"><Checkbox id="labs-pending" checked={quickFilters.labsPending} onCheckedChange={() => handleQuickFilterChange('labsPending')} /><Label htmlFor="labs-pending">Labs Pending ({patients?.filter(p=>p.status === 'Labs').length || 0})</Label></div>
                     </div>
 
                   </CardContent>
@@ -536,7 +484,7 @@ export default function PatientsPage() {
                             <h3 className="font-semibold text-sm px-2 py-1">{col} ({patientsByColumn[col]?.length || 0})</h3>
                             <div className="mt-2 space-y-2 h-[calc(100vh-360px)] overflow-y-auto">
                                 {patientsByColumn[col]?.map(p => (
-                                    <PatientCard key={p.mrn} patient={p} onSelect={setSelectedPatient} />
+                                    <PatientCard key={p.id} patient={p} onSelect={setSelectedPatient} />
                                 ))}
                                 {patientsByColumn[col]?.length === 0 && <p className="text-xs text-center text-muted-foreground p-4">No patients in this stage.</p>}
                             </div>
@@ -545,12 +493,8 @@ export default function PatientsPage() {
                 </div>
             </main>
         <NewPatientModal open={isRegistering} onOpenChange={setIsRegistering} onRegister={handleRegisterPatient} />
-        <SelectedPatientTimeline patient={selectedPatient} onAction={handleAction} onSelect={handleUpdatePatient} />
+        <SelectedPatientTimeline patient={selectedPatient} onAction={handleAction} onSelect={setSelectedPatient} />
         </div>
     </div>
   );
 }
-
-    
-
-    

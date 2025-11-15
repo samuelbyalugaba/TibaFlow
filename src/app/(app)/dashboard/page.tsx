@@ -1,4 +1,6 @@
+'use client';
 import { Download } from "lucide-react";
+import { useUser } from '@/firebase';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +18,9 @@ import { RecentPatients } from "@/components/dashboard/recent-patients";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function DashboardPage() {
+  const { user } = useUser();
   const avatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
+  const userInitials = user?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -39,9 +43,9 @@ export default function DashboardPage() {
               <DropdownMenuTrigger asChild>
                 <Avatar className="cursor-pointer">
                   {avatar && (
-                    <AvatarImage src={avatar.imageUrl} alt="User Avatar" />
+                    <AvatarImage src={user?.photoURL || avatar.imageUrl} alt="User Avatar" />
                   )}
-                  <AvatarFallback>JD</AvatarFallback>
+                  <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

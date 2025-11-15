@@ -50,6 +50,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 const triageLevels = {
   '1': { name: 'ESI 1 - Resuscitation', color: 'bg-red-600 text-white' },
@@ -59,53 +61,25 @@ const triageLevels = {
   '5': { name: 'ESI 5 - Non-Urgent', color: 'bg-blue-500 text-white' },
 };
 
-const initialErPatients = [
-  {
-    name: 'Carlos Garcia',
-    mrn: 'MRN123987',
-    triage: '1',
-    complaint: 'Unresponsive',
-    doorToDoc: '5 min',
-    location: 'Trauma 1',
-  },
-  {
-    name: 'John Smith',
-    mrn: 'MRN789012',
-    triage: '2',
-    complaint: 'Chest Pain',
-    doorToDoc: '12 min',
-    location: 'ER Bed 4',
-  },
-  {
-    name: 'Jane Doe',
-    mrn: 'MRN345678',
-    triage: '3',
-    complaint: 'Broken Arm',
-    doorToDoc: '28 min',
-    location: 'With Triage Nurse',
-  },
-  {
-    name: 'Aisha Khan',
-    mrn: 'MRN654321',
-    triage: '4',
-    complaint: 'Sore Throat',
-    doorToDoc: '45 min',
-    location: 'Fast-Track',
-  },
-  {
-    name: 'Benny Carter',
-    mrn: 'MRN456123',
-    triage: '5',
-    complaint: 'Suture Removal',
-    doorToDoc: '62 min',
-    location: 'Waiting Room',
-  },
-];
+type Patient = {
+  id: string;
+  name: string;
+  mrn: string;
+  triage: string;
+  complaint: string;
+  doorToDoc: string;
+  location: string;
+};
+
 
 export default function EmergencyPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [erPatients, setErPatients] = useState(initialErPatients);
+  const firestore = useFirestore();
+  const patientsCollectionRef = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
+  // For emergency, we can imagine a different collection or a filter
+  const { data: erPatients, isLoading } = useCollection<Patient>(patientsCollectionRef);
+
   const [isRegistering, setIsRegistering] = useState(false);
   const [fastTrackFilter, setFastTrackFilter] = useState(false);
 
@@ -118,26 +92,19 @@ export default function EmergencyPage() {
 
   const handleRegisterPatient = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const newPatient = {
-      name: formData.get('name') as string,
-      mrn: `MRN${Math.floor(Math.random() * 900000) + 100000}`,
-      triage: formData.get('triage') as string,
-      complaint: formData.get('complaint') as string,
-      doorToDoc: '1 min',
-      location: 'Waiting Room',
-    };
-    setErPatients([newPatient, ...erPatients]);
-    setIsRegistering(false);
+    // This should write to firestore
     toast({
       title: "Patient Registered",
-      description: `${newPatient.name} has been added to the triage board.`,
+      description: `Patient has been added to the triage board.`,
     });
+    setIsRegistering(false);
   };
 
-  const displayedPatients = fastTrackFilter
-    ? erPatients.filter(p => p.triage === '4' || p.triage === '5')
-    : erPatients;
+  const displayedPatients = erPatients?.filter(p => fastTrackFilter ? ['4', '5'].includes(p.triage) : true);
+
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Loading Emergency Dashboard...</p></div>
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -224,8 +191,8 @@ export default function EmergencyPage() {
               <Users className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{erPatients.filter(p => p.location === 'Waiting Room').length}</div>
-              <p className="text-xs text-muted-foreground">{erPatients.filter(p => ['1', '2'].includes(p.triage)).length} high priority</p>
+              <div className="text-2xl font-bold">{erPatients?.filter(p => p.location === 'Waiting Room').length || 0}</div>
+              <p className="text-xs text-muted-foreground">{erPatients?.filter(p => ['1', '2'].includes(p.triage)).length || 0} high priority</p>
             </CardContent>
           </Card>
           <Card>
@@ -274,9 +241,9 @@ export default function EmergencyPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayedPatients.map((patient) => (
+                {displayedPatients?.map((patient) => (
                   <TableRow
-                    key={patient.mrn}
+                    key={patient.id}
                     className={
                       patient.triage === '1' ? 'bg-red-50' : ''
                     }
@@ -294,13 +261,13 @@ export default function EmergencyPage() {
                           'font-bold',
                           triageLevels[
                             patient.triage as keyof typeof triageLevels
-                          ].color
+                          ]?.color
                         )}
                       >
                         {
                           triageLevels[
                             patient.triage as keyof typeof triageLevels
-                          ].name
+                          ]?.name
                         }
                       </Badge>
                     </TableCell>

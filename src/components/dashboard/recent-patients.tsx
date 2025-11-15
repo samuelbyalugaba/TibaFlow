@@ -1,3 +1,4 @@
+'use client';
 import {
   Card,
   CardContent,
@@ -15,46 +16,35 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
-const patients = [
-  {
-    name: "Olivia Martin",
-    email: "olivia.martin@email.com",
-    avatar: "https://picsum.photos/seed/2/40/40",
-    status: "Admitted",
-    admitted: "2024-07-21",
-  },
-  {
-    name: "Jackson Lee",
-    email: "jackson.lee@email.com",
-    avatar: "https://picsum.photos/seed/3/40/40",
-    status: "Discharged",
-    admitted: "2024-07-20",
-  },
-  {
-    name: "Isabella Nguyen",
-    email: "isabella.nguyen@email.com",
-    avatar: "https://picsum.photos/seed/4/40/40",
-    status: "Admitted",
-    admitted: "2024-07-19",
-  },
-  {
-    name: "William Kim",
-    email: "will@email.com",
-    avatar: "https://picsum.photos/seed/5/40/40",
-    status: "Observation",
-    admitted: "2024-07-18",
-  },
-  {
-    name: "Sofia Davis",
-    email: "sofia.davis@email.com",
-    avatar: "https://picsum.photos/seed/6/40/40",
-    status: "Discharged",
-    admitted: "2024-07-17",
-  },
-];
+type Patient = {
+  id: string;
+  name: string;
+  status: string;
+  photo: string;
+}
 
 export function RecentPatients() {
+  const firestore = useFirestore();
+  const patientsQuery = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
+  const { data: patients, isLoading } = useCollection<Patient>(patientsQuery);
+
+  if (isLoading) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="font-headline">Recent Patients</CardTitle>
+          <CardDescription>Loading patient movements...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p>Loading...</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="h-full">
       <CardHeader>
@@ -70,12 +60,12 @@ export function RecentPatients() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {patients.map((patient) => (
-              <TableRow key={patient.email}>
+            {patients?.slice(0, 5).map((patient) => (
+              <TableRow key={patient.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={patient.avatar} alt={patient.name} data-ai-hint="person face" />
+                      <AvatarImage src={patient.photo} alt={patient.name} data-ai-hint="person face" />
                       <AvatarFallback>
                         {patient.name.charAt(0)}
                       </AvatarFallback>
@@ -86,9 +76,9 @@ export function RecentPatients() {
                 <TableCell>
                   <Badge
                     variant={
-                      patient.status === "Admitted"
+                      patient.status === "Admitted" || patient.status === "In Progress"
                         ? "default"
-                        : patient.status === "Discharged"
+                        : patient.status === "Discharged" || patient.status === "Done"
                         ? "secondary"
                         : "outline"
                     }
