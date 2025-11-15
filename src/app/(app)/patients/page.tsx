@@ -379,22 +379,28 @@ export default function PatientsPage() {
 
   const filteredPatients = useMemo(() => {
     if (!patients) return [];
-    return patients
-      .filter(p => {
+    
+    let localPatients = [...patients];
+
+    localPatients = localPatients.filter(p => {
         if (activeEncounterFilter === 'All') return true;
         return p.encounterType === activeEncounterFilter;
-      })
-      .filter(p => {
+    });
+
+    localPatients = localPatients.filter(p => {
         if (!searchTerm) return true;
         const lowerSearch = searchTerm.toLowerCase();
         return p.name.toLowerCase().includes(lowerSearch) || p.mrn.toLowerCase().includes(lowerSearch);
-      })
-      .filter(p => {
+    });
+
+    localPatients = localPatients.filter(p => {
         if (quickFilters.critical && !p.criticalAlert) return false;
         if (quickFilters.waiting && p.waitTime <= 30) return false;
         if (quickFilters.labsPending && p.status !== 'Labs') return false;
         return true;
-      });
+    });
+    
+    return localPatients;
   }, [patients, searchTerm, activeEncounterFilter, quickFilters]);
 
   const patientsByColumn = useMemo(() => {
@@ -498,3 +504,5 @@ export default function PatientsPage() {
     </div>
   );
 }
+
+    
