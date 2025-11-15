@@ -17,18 +17,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 
 type Patient = {
   id: string;
   name: string;
   status: string;
   photo: string;
+  lastActionTimestamp: string;
 }
 
 export function RecentPatients() {
   const firestore = useFirestore();
-  const patientsQuery = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
+  const patientsQuery = useMemoFirebase(
+      () => query(collection(firestore, 'patients'), orderBy('lastActionTimestamp', 'desc'), limit(5)), 
+      [firestore]
+  );
   const { data: patients, isLoading } = useCollection<Patient>(patientsQuery);
 
   if (isLoading) {
@@ -60,7 +64,7 @@ export function RecentPatients() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {patients?.slice(0, 5).map((patient) => (
+            {patients?.map((patient) => (
               <TableRow key={patient.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">

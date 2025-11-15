@@ -16,14 +16,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import { RecentPatients } from "@/components/dashboard/recent-patients";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const { user } = useUser();
   const auth = useAuth();
   const { toast } = useToast();
-  const avatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
   const userInitials = user?.email?.charAt(0).toUpperCase() || 'U';
 
   const handleLogout = () => {
@@ -61,9 +59,7 @@ export default function DashboardPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="cursor-pointer">
-                  {avatar && (
-                    <AvatarImage src={user?.photoURL || avatar.imageUrl} alt="User Avatar" />
-                  )}
+                  <AvatarImage src={user?.photoURL || ''} alt="User Avatar" />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
