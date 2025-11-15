@@ -1,4 +1,4 @@
-import { Beaker, Microscope, TestTube, Filter, FileDown } from "lucide-react";
+import { Beaker, Microscope, TestTube, Filter, FileDown, Clock, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +34,7 @@ const labResults = [
     orderedBy: "Dr. Goodman",
     collectionTime: "2023-10-27 09:00",
     status: "Completed",
+    isCritical: false,
   },
   {
     orderId: "ORD-RAD-001",
@@ -42,6 +43,7 @@ const labResults = [
     orderedBy: "Dr. Fring",
     collectionTime: "2023-10-27 09:15",
     status: "Pending Results",
+    isCritical: false,
   },
   {
     orderId: "ORD-LAB-002",
@@ -49,7 +51,8 @@ const labResults = [
     test: "Basic Metabolic Panel (BMP)",
     orderedBy: "Dr. Goodman",
     collectionTime: "2023-10-27 09:30",
-    status: "In-Progress",
+    status: "Processing",
+    isCritical: true,
   },
   {
     orderId: "ORD-LAB-003",
@@ -57,7 +60,7 @@ const labResults = [
     test: "Lipid Panel",
     orderedBy: "Dr. Ehrmantraut",
     collectionTime: "2023-10-27 10:00",
-    status: "Collected",
+    status: "Received",
   },
   {
     orderId: "ORD-RAD-002",
@@ -65,14 +68,15 @@ const labResults = [
     test: "CT Head w/o contrast",
     orderedBy: "Dr. Fring",
     collectionTime: "2023-10-27 10:30",
-    status: "Ordered",
+    status: "Collected",
   },
 ];
 
 const statusStyles = {
   Completed: "bg-green-100 text-green-800",
   "Pending Results": "bg-blue-100 text-blue-800",
-  "In-Progress": "bg-yellow-100 text-yellow-800 animate-pulse",
+  Processing: "bg-yellow-100 text-yellow-800 animate-pulse",
+  Received: "bg-indigo-100 text-indigo-800",
   Collected: "bg-purple-100 text-purple-800",
   Ordered: "bg-gray-100 text-gray-800",
 };
@@ -88,7 +92,7 @@ export default function LabsPage() {
               Labs & Radiology
             </h1>
             <p className="text-muted-foreground">
-              Track and manage diagnostic test orders.
+              Track and manage diagnostic test orders from order to result.
             </p>
           </div>
            <div className="flex items-center gap-2">
@@ -96,21 +100,19 @@ export default function LabsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  <Filter className="mr-2" /> Filter
+                  <Filter className="mr-2" /> Filter by Status
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Completed</DropdownMenuItem>
-                <DropdownMenuItem>Pending Results</DropdownMenuItem>
-                <DropdownMenuItem>In-Progress</DropdownMenuItem>
-                 <DropdownMenuItem>Collected</DropdownMenuItem>
-                <DropdownMenuItem>Ordered</DropdownMenuItem>
+                {Object.keys(statusStyles).map(status => (
+                  <DropdownMenuItem key={status}>{status}</DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
             <Button>
-              <FileDown className="mr-2" /> Export
+              <TestTube className="mr-2" /> New Order
             </Button>
           </div>
         </header>
@@ -119,7 +121,7 @@ export default function LabsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Pending Lab Tests</CardTitle>
-              <TestTube className="size-5 text-muted-foreground" />
+              <Microscope className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">12</div>
@@ -174,21 +176,28 @@ export default function LabsPage() {
                   <TableHead>Test/Scan</TableHead>
                   <TableHead>Ordered By</TableHead>
                   <TableHead>Collection Time</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {labResults.map((order) => (
-                  <TableRow key={order.orderId}>
+                  <TableRow key={order.orderId} className={order.isCritical ? "bg-red-50" : ""}>
                     <TableCell className="font-mono text-xs">{order.orderId}</TableCell>
                     <TableCell className="font-medium">{order.patient}</TableCell>
-                    <TableCell>{order.test}</TableCell>
+                    <TableCell>
+                      {order.isCritical && <AlertTriangle className="size-4 text-red-500 inline-block mr-2" />}
+                      {order.test}
+                      </TableCell>
                     <TableCell>{order.orderedBy}</TableCell>
                     <TableCell>{order.collectionTime}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                        <Badge className={statusStyles[order.status as keyof typeof statusStyles]}>
                         {order.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                       <Button variant="outline" size="sm">View</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -200,4 +209,3 @@ export default function LabsPage() {
     </div>
   );
 }
-import { Clock, AlertTriangle } from 'lucide-react';
