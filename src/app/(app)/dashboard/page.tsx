@@ -1,6 +1,7 @@
 'use client';
-import { Download } from "lucide-react";
-import { useUser } from '@/firebase';
+import { Download, LogOut, Settings, HelpCircle } from "lucide-react";
+import { useUser, useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,11 +17,29 @@ import { StatsCards } from "@/components/dashboard/stats-cards";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import { RecentPatients } from "@/components/dashboard/recent-patients";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DashboardPage() {
   const { user } = useUser();
+  const auth = useAuth();
+  const { toast } = useToast();
   const avatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
   const userInitials = user?.email?.charAt(0).toUpperCase() || 'U';
+
+  const handleLogout = () => {
+    signOut(auth);
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
+  };
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+      title: "Feature Not Implemented",
+      description: `${feature} functionality is coming soon.`,
+    });
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -35,7 +54,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <Button>
+            <Button onClick={() => handlePlaceholderClick('Download Report')}>
               <Download className="mr-2" />
               Download Report
             </Button>
@@ -51,10 +70,19 @@ export default function DashboardPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem>Support</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePlaceholderClick('Settings')}>
+                  <Settings className="mr-2" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handlePlaceholderClick('Support')}>
+                  <HelpCircle className="mr-2" />
+                  Support
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2" />
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
