@@ -91,7 +91,7 @@ export function AppSidebar() {
         <Logo className="size-32" />
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-2">
         <SidebarMenu>
           {SIDEBAR_ITEMS.map((item) => (
             <SidebarMenuItem key={item.href}>
