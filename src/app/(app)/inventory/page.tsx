@@ -1,4 +1,4 @@
-import { Boxes, PackagePlus, Truck, Search, AlertCircle, FileDown } from "lucide-react";
+import { Boxes, PackagePlus, Truck, Search, AlertCircle, FileDown, Package, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -159,7 +159,7 @@ export default function InventoryPage() {
               </TableHeader>
               <TableBody>
                 {inventoryItems.map((item) => (
-                  <TableRow key={item.id} className={item.stock < item.par ? 'bg-red-50' : ''}>
+                  <TableRow key={item.id} className={item.stock < item.par ? 'bg-red-50 dark:bg-red-900/20' : ''}>
                     <TableCell className="font-mono text-xs">{item.id}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>
@@ -183,4 +183,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-import { DollarSign, Package } from 'lucide-react';
