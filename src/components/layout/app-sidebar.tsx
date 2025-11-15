@@ -79,7 +79,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const avatar = PlaceHolderImages.find((img) => img.id === "user-avatar");
   return (
-    <Sidebar variant="sidebar" collapsible="icon" defaultOpen={false}>
+    <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 justify-center">
         <Logo className="size-7 text-primary" />
         <span className="font-headline text-lg font-semibold tracking-tight text-primary">
