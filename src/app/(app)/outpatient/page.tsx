@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useRouter } from 'next/navigation';
 import {
   FilePlus,
   Search,
@@ -35,6 +37,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 const patientQueue = [
   {
@@ -84,6 +87,16 @@ const statusColors: { [key: string]: string } = {
 };
 
 export default function OutpatientPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+      title: 'Feature Not Implemented',
+      description: `${feature} functionality is coming soon.`,
+    });
+  };
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -165,18 +178,19 @@ export default function OutpatientPage() {
                     type="search"
                     placeholder="Search by MRN or Name..."
                     className="pl-8 sm:w-[300px]"
+                    onChange={() => handlePlaceholderClick('Search')}
                   />
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => handlePlaceholderClick('Filter')}>
                       <Filter className="mr-2" /> Filter by Status
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Status</DropdownMenuLabel>
                     {Object.keys(statusColors).map((status) => (
-                      <DropdownMenuItem key={status}>{status}</DropdownMenuItem>
+                      <DropdownMenuItem key={status} onClick={() => handlePlaceholderClick('Filter')}>{status}</DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -211,7 +225,7 @@ export default function OutpatientPage() {
                     </TableCell>
                     <TableCell>{patient.lastUpdate}</TableCell>
                     <TableCell className="text-right">
-                       <Button variant="outline" size="sm">
+                       <Button variant="outline" size="sm" onClick={() => router.push('/patients')}>
                         <ClipboardList className="mr-1 size-4" /> View Details
                       </Button>
                     </TableCell>
