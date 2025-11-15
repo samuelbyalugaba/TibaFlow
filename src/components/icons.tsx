@@ -1,16 +1,18 @@
 import Image from 'next/image';
-import type { SVGProps } from 'react';
+import type { ImageProps } from 'next/image';
+import { cn } from '@/lib/utils';
 
-export function Logo(props: Omit<SVGProps<SVGSVGElement>, 'width' | 'height'> & { width?: number, height?: number, className?: string }) {
-  const { width = 28, height = 28, className, ...rest } = props;
+export function Logo(props: Omit<ImageProps, 'src' | 'alt'>) {
+  const { className, ...rest } = props;
   return (
-    <Image
-      src="/TibaFLow.png"
-      alt="TibaFlow Logo"
-      width={width}
-      height={height}
-      className={className}
-      {...rest}
-    />
+    <div className={cn("relative w-7 h-7", className)}>
+      <Image
+        src="/TibaFLow.png"
+        alt="TibaFlow Logo"
+        fill
+        style={{ objectFit: 'contain' }}
+        {...rest}
+      />
+    </div>
   );
 }
