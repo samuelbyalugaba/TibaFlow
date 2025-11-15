@@ -167,6 +167,9 @@
         "refills": {
           "type": "number",
           "description": "Number of refills allowed for the prescription."
+        },
+        "status": {
+            "type": "string"
         }
       },
       "required": [
@@ -300,173 +303,6 @@
         "status"
       ]
     },
-    "LabResult": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LabResult",
-      "type": "object",
-      "description": "Represents the results of a laboratory test.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the LabResult entity."
-        },
-        "labOrderId": {
-          "type": "string",
-          "description": "Reference to LabOrder. (Relationship: LabOrder 1:1 LabResult)"
-        },
-        "resultDate": {
-          "type": "string",
-          "description": "Date the lab result was recorded.",
-          "format": "date"
-        },
-        "testName": {
-          "type": "string",
-          "description": "Name of the lab test."
-        },
-        "resultValue": {
-          "type": "string",
-          "description": "Value of the lab result."
-        },
-        "unit": {
-          "type": "string",
-          "description": "Units for the lab result."
-        },
-        "normalRange": {
-          "type": "string",
-          "description": "Normal range for the lab test."
-        }
-      },
-      "required": [
-        "id",
-        "labOrderId",
-        "resultDate",
-        "testName",
-        "resultValue",
-        "unit",
-        "normalRange"
-      ]
-    },
-    "RadiologyOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "RadiologyOrder",
-      "type": "object",
-      "description": "Represents an order for a radiology exam.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the RadiologyOrder entity."
-        },
-        "patientId": {
-          "type": "string",
-          "description": "Reference to Patient. (Relationship: Patient 1:N RadiologyOrder)"
-        },
-        "doctorId": {
-          "type": "string",
-          "description": "Reference to Doctor. (Relationship: Doctor 1:N RadiologyOrder)"
-        },
-        "orderDate": {
-          "type": "string",
-          "description": "Date the radiology order was placed.",
-          "format": "date"
-        },
-        "examType": {
-          "type": "string",
-          "description": "Type of radiology exam ordered (e.g., X-ray, MRI)."
-        },
-        "bodyPart": {
-          "type": "string",
-          "description": "Body part to be examined."
-        },
-        "status": {
-          "type": "string",
-          "description": "Status of the radiology order (e.g., pending, completed)."
-        }
-      },
-      "required": [
-        "id",
-        "patientId",
-        "doctorId",
-        "orderDate",
-        "examType",
-        "bodyPart",
-        "status"
-      ]
-    },
-    "RadiologyReport": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "RadiologyReport",
-      "type": "object",
-      "description": "Represents the report generated after a radiology exam.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the RadiologyReport entity."
-        },
-        "radiologyOrderId": {
-          "type": "string",
-          "description": "Reference to RadiologyOrder. (Relationship: RadiologyOrder 1:1 RadiologyReport)"
-        },
-        "reportDate": {
-          "type": "string",
-          "description": "Date the radiology report was generated.",
-          "format": "date"
-        },
-        "findings": {
-          "type": "string",
-          "description": "Findings from the radiology exam."
-        },
-        "conclusion": {
-          "type": "string",
-          "description": "Conclusion of the radiology report."
-        },
-        "radiologistId": {
-          "type": "string",
-          "description": "Reference to Radiologist. (Relationship: Radiologist 1:N RadiologyReport)"
-        }
-      },
-      "required": [
-        "id",
-        "radiologyOrderId",
-        "reportDate",
-        "findings",
-        "conclusion",
-        "radiologistId"
-      ]
-    },
-    "Radiologist": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Radiologist",
-      "type": "object",
-      "description": "Represents a radiologist.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Radiologist entity."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "Radiologist's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Radiologist's last name."
-        },
-        "contactNumber": {
-          "type": "string",
-          "description": "Radiologist's contact phone number."
-        },
-        "email": {
-          "type": "string",
-          "description": "Radiologist's email address.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "firstName",
-        "lastName"
-      ]
-    },
     "VitalSign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "VitalSign",
@@ -508,94 +344,32 @@
         "unit"
       ]
     },
-    "IncidentReport": {
+    "Surgery": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "IncidentReport",
+      "title": "Surgery",
       "type": "object",
-      "description": "Represents a report of an incident that occurred within the healthcare facility.",
+      "description": "Represents a scheduled surgery.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the IncidentReport entity."
-        },
-        "reporterId": {
-          "type": "string",
-          "description": "Reference to Staff member who reported the incident. (Relationship: Staff 1:N IncidentReport)"
-        },
-        "incidentDate": {
-          "type": "string",
-          "description": "Date and time the incident occurred.",
-          "format": "date-time"
-        },
-        "location": {
-          "type": "string",
-          "description": "Location where the incident occurred."
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the incident."
-        },
-        "affectedParty": {
-          "type": "string",
-          "description": "Description of who the affected party is, if applicable"
-        },
-        "severity": {
-          "type": "string",
-          "description": "Severity of the incident (e.g., low, medium, high)."
-        },
-        "status": {
-          "type": "string",
-          "description": "Status of the incident report (e.g., open, closed)."
-        }
+          "id": { "type": "string" },
+          "caseId": { "type": "string" },
+          "patient": { "type": "string" },
+          "procedure": { "type": "string" },
+          "surgeon": { "type": "string" },
+          "anesthetist": { "type": "string" },
+          "or": { "type": "string" },
+          "time": { "type": "string" },
+          "status": { "type": "string" },
+          "checklist": {
+              "type": "object",
+              "properties": {
+                  "consent": { "type": "boolean" },
+                  "fasting": { "type": "boolean" },
+                  "blood": { "type": "boolean" },
+                  "implant": { "type": "boolean" }
+              }
+          }
       },
-      "required": [
-        "id",
-        "reporterId",
-        "incidentDate",
-        "location",
-        "description",
-        "severity",
-        "status"
-      ]
-    },
-    "Staff": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Staff",
-      "type": "object",
-      "description": "Represents a staff member within the healthcare facility.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Staff entity."
-        },
-        "firstName": {
-          "type": "string",
-          "description": "Staff member's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Staff member's last name."
-        },
-        "jobTitle": {
-          "type": "string",
-          "description": "Staff member's job title."
-        },
-        "contactNumber": {
-          "type": "string",
-          "description": "Staff member's contact phone number."
-        },
-        "email": {
-          "type": "string",
-          "description": "Staff member's email address.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "firstName",
-        "lastName",
-        "jobTitle"
-      ]
+      "required": ["id", "caseId", "patient", "procedure", "surgeon", "status"]
     }
   },
   "auth": {
@@ -611,71 +385,41 @@
         "definition": {
           "entityName": "Patient",
           "schema": {
-            "$ref": "#/backend/entities/Patient"
+            "$ref": "#/entities/Patient"
           },
-          "description": "Stores patient information. Patient records are generally considered private and access will be controlled by the patient id or appropriate staff roles.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
+          "description": "Stores patient information."
+        },
+        "subcollections": [
+          {
+            "path": "vitalSigns/{vitalSignId}",
+            "definition": {
+              "entityName": "VitalSign",
+              "schema": {
+                "$ref": "#/entities/VitalSign"
+              },
+              "description": "Stores vital signs for a patient."
             }
-          ]
-        }
+          }
+        ]
       },
       {
         "path": "/medications/{medicationId}",
         "definition": {
           "entityName": "Medication",
           "schema": {
-            "$ref": "#/backend/entities/Medication"
+            "$ref": "#/entities/Medication"
           },
-          "description": "Stores medication information. Generally public but potentially restricted access can be controlled through security rules based on pharmacy staff roles.",
-          "params": [
-            {
-              "name": "medicationId",
-              "description": "Unique identifier for the medication."
-            }
-          ]
+          "description": "Stores medication information."
         }
       },
       {
-        "path": "/medications/{medicationId}/batches/{batchId}",
-        "definition": {
-          "entityName": "MedicationBatch",
-          "schema": {
-            "$ref": "#/backend/entities/MedicationBatch"
-          },
-          "description": "Stores medication batch information, linked to a medication. Access controlled by pharmacy staff roles.",
-          "params": [
-            {
-              "name": "medicationId",
-              "description": "Unique identifier for the medication."
-            },
-            {
-              "name": "batchId",
-              "description": "Unique identifier for the medication batch."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/patients/{patientId}/prescriptions/{prescriptionId}",
+        "path": "/prescriptions/{prescriptionId}",
         "definition": {
           "entityName": "Prescription",
           "schema": {
-            "$ref": "#/backend/entities/Prescription"
+            "$ref": "#/entities/Prescription"
           },
-          "description": "Stores prescriptions for a patient, linked to a medication and doctor. Controlled by patient, doctor, and potentially pharmacy staff roles.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "prescriptionId",
-              "description": "Unique identifier for the prescription."
-            }
-          ]
+          "description": "Stores prescriptions for patients."
         }
       },
       {
@@ -683,182 +427,31 @@
         "definition": {
           "entityName": "Doctor",
           "schema": {
-            "$ref": "#/backend/entities/Doctor"
+            "$ref": "#/entities/Doctor"
           },
-          "description": "Stores doctor information. Accessible to authorized staff and potentially patients to find doctors.",
-          "params": [
-            {
-              "name": "doctorId",
-              "description": "Unique identifier for the doctor."
-            }
-          ]
+          "description": "Stores doctor information."
         }
       },
       {
-        "path": "/patients/{patientId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": {
-            "$ref": "#/backend/entities/Appointment"
-          },
-          "description": "Stores appointments for a patient, linked to a doctor. Access controlled by patient, doctor, and authorized staff.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "appointmentId",
-              "description": "Unique identifier for the appointment."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/patients/{patientId}/labOrders/{labOrderId}",
+        "path": "/labOrders/{labOrderId}",
         "definition": {
           "entityName": "LabOrder",
           "schema": {
-            "$ref": "#/backend/entities/LabOrder"
+            "$ref": "#/entities/LabOrder"
           },
-          "description": "Stores lab orders for a patient, linked to a doctor. Access controlled by patient, doctor, and lab staff.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "labOrderId",
-              "description": "Unique identifier for the lab order."
-            }
-          ]
+          "description": "Stores lab orders for patients."
         }
       },
       {
-        "path": "/patients/{patientId}/labOrders/{labOrderId}/labResult",
+        "path": "/surgeries/{surgeryId}",
         "definition": {
-          "entityName": "LabResult",
+          "entityName": "Surgery",
           "schema": {
-            "$ref": "#/backend/entities/LabResult"
+            "$ref": "#/entities/Surgery"
           },
-          "description": "Stores lab results for a lab order.  Access controlled by patient, doctor, and lab staff.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "labOrderId",
-              "description": "Unique identifier for the lab order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/patients/{patientId}/radiologyOrders/{radiologyOrderId}",
-        "definition": {
-          "entityName": "RadiologyOrder",
-          "schema": {
-            "$ref": "#/backend/entities/RadiologyOrder"
-          },
-          "description": "Stores radiology orders for a patient, linked to a doctor. Access controlled by patient, doctor, and radiology staff.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "radiologyOrderId",
-              "description": "Unique identifier for the radiology order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/radiologyOrders/{radiologyOrderId}/radiologyReport",
-        "definition": {
-          "entityName": "RadiologyReport",
-          "schema": {
-            "$ref": "#/backend/entities/RadiologyReport"
-          },
-          "description": "Stores radiology reports for a radiology order. Access controlled by patient, doctor, radiologist, and radiology staff.",
-          "params": [
-            {
-              "name": "radiologyOrderId",
-              "description": "Unique identifier for the radiology order."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/radiologists/{radiologistId}",
-        "definition": {
-          "entityName": "Radiologist",
-          "schema": {
-            "$ref": "#/backend/entities/Radiologist"
-          },
-          "description": "Stores radiologist information. Access controlled by authorized staff.",
-          "params": [
-            {
-              "name": "radiologistId",
-              "description": "Unique identifier for the radiologist."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/patients/{patientId}/vitalSigns/{vitalSignId}",
-        "definition": {
-          "entityName": "VitalSign",
-          "schema": {
-            "$ref": "#/backend/entities/VitalSign"
-          },
-          "description": "Stores vital signs for a patient.  Access controlled by patient, doctor, and nursing staff.",
-          "params": [
-            {
-              "name": "patientId",
-              "description": "Unique identifier for the patient."
-            },
-            {
-              "name": "vitalSignId",
-              "description": "Unique identifier for the vital sign."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/incidentReports/{incidentReportId}",
-        "definition": {
-          "entityName": "IncidentReport",
-          "schema": {
-            "$ref": "#/backend/entities/IncidentReport"
-          },
-          "description": "Stores incident reports. Access controlled by the reporter (reporterId) and authorized staff.",
-          "params": [
-            {
-              "name": "incidentReportId",
-              "description": "Unique identifier for the incident report."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/staff/{staffId}",
-        "definition": {
-          "entityName": "Staff",
-          "schema": {
-            "$ref": "#/backend/entities/Staff"
-          },
-          "description": "Stores staff information.  Access controlled by HR and admin staff.",
-          "params": [
-            {
-              "name": "staffId",
-              "description": "Unique identifier for the staff member."
-            }
-          ]
+          "description": "Stores surgery schedules and details."
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the MediChain application's core features, including EMR, e-Prescribing, lab and radiology workflows, and various administrative and analytics functionalities. The structure prioritizes authorization independence, clarity, and security. Hierarchical paths are used for user-owned data, such as patients and their related records. Collaborative data, such as incident reports, can leverage membership maps for access control if needed (although, in this initial design, a simplified ownership model based on the reporter is used).The chosen approach guarantees Authorization Independence, eliminates the need for `get()` calls in security rules and enables atomic operations. The structure also supports secure `list` operations (QAPs) through structural segregation, as each collection serves a specific purpose with well-defined access requirements."
+    ]
   }
 }

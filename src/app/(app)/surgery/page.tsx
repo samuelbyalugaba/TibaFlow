@@ -46,89 +46,27 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const surgeries = [
-  {
-    caseId: 'CASE-001',
-    patient: 'Michael Scott',
-    procedure: 'Appendectomy',
-    surgeon: 'Dr. Schrute',
-    anesthetist: 'Dr. Martin',
-    or: 'OR 3',
-    time: '08:00 AM',
-    status: 'Scheduled',
+type Surgery = {
+    id: string;
+    caseId: string;
+    patient: string;
+    procedure: string;
+    surgeon: string;
+    anesthetist: string;
+    or: string;
+    time: string;
+    status: 'Scheduled' | 'Pre-Op' | 'In Progress' | 'Post-Op' | 'Cancelled';
     checklist: {
-      consent: true,
-      fasting: true,
-      blood: false,
-      implant: false,
-    },
-  },
-  {
-    caseId: 'CASE-002',
-    patient: 'Pam Beesly',
-    procedure: 'Cholecystectomy',
-    surgeon: 'Dr. Halpert',
-    anesthetist: 'Dr. Hudson',
-    or: 'OR 1',
-    time: '09:30 AM',
-    status: 'In Progress',
-    checklist: {
-      consent: true,
-      fasting: true,
-      blood: true,
-      implant: false,
-    },
-  },
-  {
-    caseId: 'CASE-003',
-    patient: 'Jim Halpert',
-    procedure: 'Knee Arthroscopy',
-    surgeon: 'Dr. Bernard',
-    anesthetist: 'Dr. Martin',
-    or: 'OR 2',
-    time: '11:00 AM',
-    status: 'Post-Op',
-    checklist: {
-      consent: true,
-      fasting: true,
-      blood: false,
-      implant: true,
-    },
-  },
-  {
-    caseId: 'CASE-004',
-    patient: 'Dwight Schrute',
-    procedure: 'Coronary Artery Bypass',
-    surgeon: 'Dr. Kapoor',
-    anesthetist: 'Dr. Hudson',
-    or: 'OR 4 (Hybrid)',
-    time: '12:00 PM',
-    status: 'Pre-Op',
-    checklist: {
-      consent: true,
-      fasting: false,
-      blood: true,
-      implant: false,
-    },
-  },
-  {
-    caseId: 'CASE-005',
-    patient: 'Angela Martin',
-    procedure: 'Cataract Surgery',
-    surgeon: 'Dr. Hudson',
-    anesthetist: 'Dr. Martin',
-    or: 'OR 5',
-    time: '02:00 PM',
-    status: 'Cancelled',
-    checklist: {
-      consent: false,
-      fasting: false,
-      blood: false,
-      implant: false,
-    },
-  },
-];
+      consent: boolean;
+      fasting: boolean;
+      blood: boolean;
+      implant: boolean;
+    };
+};
 
 const statusStyles = {
   Scheduled: 'bg-blue-100 text-blue-800',
@@ -146,6 +84,27 @@ const ChecklistProgress = ({ checklist }: { checklist: any }) => {
 };
 
 export default function SurgeryPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const { data: surgeries, isLoading } = useCollection<Surgery>(
+      useMemoFirebase(() => collection(firestore, 'surgeries'), [firestore])
+  );
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+        title: "Feature not implemented",
+        description: `${feature} is coming soon.`,
+    });
+  };
+
+  const casesInProgress = surgeries?.filter(s => s.status === 'In Progress').length || 0;
+  const casesInPreOp = surgeries?.filter(s => s.status === 'Pre-Op').length || 0;
+
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Loading Surgical Dashboard...</p></div>
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -161,21 +120,19 @@ export default function SurgeryPage() {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => handlePlaceholderClick('Filter')}>
                   <Filter className="mr-2" /> Filter
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Scheduled</DropdownMenuItem>
-                <DropdownMenuItem>Pre-Op</DropdownMenuItem>
-                <DropdownMenuItem>In Progress</DropdownMenuItem>
-                <DropdownMenuItem>Post-Op</DropdownMenuItem>
-                <DropdownMenuItem>Cancelled</DropdownMenuItem>
+                {Object.keys(statusStyles).map(status => (
+                    <DropdownMenuItem key={status} onClick={() => handlePlaceholderClick('Filter')}>{status}</DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button>
+            <Button onClick={() => handlePlaceholderClick('Book New Case')}>
               <PlusCircle className="mr-2" /> Book New Case
             </Button>
           </div>
@@ -190,9 +147,9 @@ export default function SurgeryPage() {
               <Scissors className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">24</div>
+              <div className="text-2xl font-bold">{surgeries?.length || 0}</div>
               <p className="text-xs text-muted-foreground">
-                1 in progress, 2 in pre-op
+                {casesInProgress} in progress, {casesInPreOp} in pre-op
               </p>
             </CardContent>
           </Card>
@@ -224,8 +181,7 @@ export default function SurgeryPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Today's Date</CardTitle>
-              <Calendar className="size-5 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Today's Date</CardTitle>              <Calendar className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -262,7 +218,7 @@ export default function SurgeryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {surgeries.map((surgery) => (
+                {surgeries?.map((surgery) => (
                   <TableRow key={surgery.caseId} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="font-medium">{surgery.time}</TableCell>
                     <TableCell>{surgery.or}</TableCell>
@@ -308,9 +264,9 @@ export default function SurgeryPage() {
                                     <Separator />
                                      <h3 className="font-semibold">WHO Surgical Safety Checklist</h3>
                                      <div className="flex justify-around">
-                                        <Button variant="outline"><UserCheck className="mr-2"/> Sign In</Button>
-                                        <Button variant="outline"><Clock className="mr-2"/> Time Out</Button>
-                                        <Button variant="outline"><ClipboardCheck className="mr-2"/> Sign Out</Button>
+                                        <Button variant="outline" onClick={() => handlePlaceholderClick('Sign In')}><UserCheck className="mr-2"/> Sign In</Button>
+                                        <Button variant="outline" onClick={() => handlePlaceholderClick('Time Out')}><Clock className="mr-2"/> Time Out</Button>
+                                        <Button variant="outline" onClick={() => handlePlaceholderClick('Sign Out')}><ClipboardCheck className="mr-2"/> Sign Out</Button>
                                      </div>
                                 </div>
                             </DialogContent>

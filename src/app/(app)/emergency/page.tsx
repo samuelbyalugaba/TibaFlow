@@ -50,8 +50,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, addDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const triageLevels = {
   '1': { name: 'ESI 1 - Resuscitation', color: 'bg-red-600 text-white' },
@@ -69,38 +70,117 @@ type Patient = {
   complaint: string;
   doorToDoc: string;
   location: string;
+  encounterType: string;
+  timeline: any[];
+  dob: string;
+  sex: string;
+  age: number;
+  photo: string;
+  phone: string;
+  status: string;
+  doctor: string;
+  waitTime: number;
+  criticalAlert: string | null;
+  lastAction: string;
+  lastActionTimestamp: string;
 };
+
+type VitalSign = {
+  patientId: string;
+  dateTime: string;
+  type: string;
+  value: string;
+  unit: string;
+}
 
 
 export default function EmergencyPage() {
   const router = useRouter();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
+  
   const patientsCollectionRef = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
-  // For emergency, we can imagine a different collection or a filter
-  const { data: erPatients, isLoading } = useCollection<Patient>(patientsCollectionRef);
+  const { data: allPatients, isLoading } = useCollection<Patient>(patientsCollectionRef);
+  
+  const erPatients = allPatients?.filter(p => p.encounterType === 'Emergency');
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [fastTrackFilter, setFastTrackFilter] = useState(false);
+  
+  const [vitalsPatient, setVitalsPatient] = useState<Patient | null>(null);
+  const [vitalsData, setVitalsData] = useState({ bp: '', hr: '', spo2: '', note: '' });
 
-  const handleSaveVitals = (patientName: string) => {
+
+  const handleSaveVitals = () => {
+    if (!vitalsPatient || !user) return;
+
+    const vitalsCollectionRef = collection(firestore, `patients/${vitalsPatient.id}/vitalSigns`);
+    const now = new Date().toISOString();
+
+    const vitalSignsToSave: Omit<VitalSign, 'id'>[] = [
+        { patientId: vitalsPatient.id, dateTime: now, type: 'Blood Pressure', value: vitalsData.bp, unit: 'mmHg' },
+        { patientId: vitalsPatient.id, dateTime: now, type: 'Heart Rate', value: vitalsData.hr, unit: 'bpm' },
+        { patientId: vitalsPatient.id, dateTime: now, type: 'SpO2', value: vitalsData.spo2, unit: '%' },
+    ];
+    
+    vitalsToSave.forEach(vital => {
+        if (vital.value) {
+            addDocumentNonBlocking(vitalsCollectionRef, vital);
+        }
+    });
+
     toast({
       title: "Vitals Saved",
-      description: `Vitals and note have been saved for ${patientName}.`,
+      description: `Vitals and note have been saved for ${vitalsPatient.name}.`,
     });
+    setVitalsPatient(null);
   };
 
   const handleRegisterPatient = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // This should write to firestore
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get('name') as string;
+    const complaint = formData.get('complaint') as string;
+    const triage = formData.get('triage') as string;
+
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'});
+    
+    const newPatient: Partial<Patient> = {
+        name,
+        complaint,
+        triage,
+        mrn: `EMG-${Math.floor(Math.random() * 9000) + 1000}`,
+        doorToDoc: '0 min',
+        location: 'Waiting Room',
+        encounterType: 'Emergency',
+        status: 'Queue',
+        lastAction: 'Registered',
+        lastActionTimestamp: currentTime,
+        timeline: [
+            { step: 'Registered', time: currentTime, by: user?.email || 'Admin', status: 'completed' },
+            { step: 'Vitals', time: null, by: 'Nurse', status: 'pending' },
+            { step: 'Doctor', time: null, by: 'Doctor', status: 'pending' },
+        ],
+        photo: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        doctor: 'Dr. Ayo',
+        waitTime: 0,
+        age: 30, // Default age
+        sex: 'U', // Default sex
+    };
+
+    addDocumentNonBlocking(patientsCollectionRef, newPatient);
+    
     toast({
       title: "Patient Registered",
-      description: `Patient has been added to the triage board.`,
+      description: `${name} has been added to the triage board.`,
     });
     setIsRegistering(false);
   };
 
   const displayedPatients = erPatients?.filter(p => fastTrackFilter ? ['4', '5'].includes(p.triage) : true);
+
+  const avgDoorToDoc = erPatients ? Math.round(erPatients.reduce((acc, p) => acc + (parseInt(p.doorToDoc) || 0), 0) / erPatients.length) || 0 : 0;
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center"><p>Loading Emergency Dashboard...</p></div>
@@ -177,9 +257,9 @@ export default function EmergencyPage() {
               <Clock className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">18 min</div>
+              <div className="text-2xl font-bold">{avgDoorToDoc} min</div>
               <p className="text-xs text-muted-foreground">
-                -2 min from last hour
+                Based on current patients
               </p>
             </CardContent>
           </Card>
@@ -192,7 +272,7 @@ export default function EmergencyPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{erPatients?.filter(p => p.location === 'Waiting Room').length || 0}</div>
-              <p className="text-xs text-muted-foreground">{erPatients?.filter(p => ['1', '2'].includes(p.triage)).length || 0} high priority</p>
+              <p className="text-xs text-muted-foreground">{erPatients?.filter(p => p.location === 'Waiting Room' && ['1', '2'].includes(p.triage)).length || 0} high priority</p>
             </CardContent>
           </Card>
           <Card>
@@ -203,8 +283,8 @@ export default function EmergencyPage() {
               <BedDouble className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">3 / 4</div>
-              <p className="text-xs text-muted-foreground">75% capacity</p>
+              <div className="text-2xl font-bold">1 / 8</div>
+              <p className="text-xs text-muted-foreground">13% capacity</p>
             </CardContent>
           </Card>
           <Card>
@@ -215,8 +295,8 @@ export default function EmergencyPage() {
               <Ambulance className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1</div>
-              <p className="text-xs text-muted-foreground">ETA: 8 min</p>
+              <div className="text-2xl font-bold">0</div>
+              <p className="text-xs text-muted-foreground">No active ETAs</p>
             </CardContent>
           </Card>
         </div>
@@ -282,42 +362,44 @@ export default function EmergencyPage() {
                       <Badge variant="outline">{patient.location}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Dialog>
+                      <Dialog onOpenChange={(open) => !open && setVitalsPatient(null)}>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="mr-2">
+                          <Button variant="outline" size="sm" className="mr-2" onClick={() => setVitalsPatient(patient)}>
                             <HeartPulse className="mr-1 size-4" /> Vitals/Note
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>
-                              Quick Vitals & Note for {patient.name}
+                              Quick Vitals & Note for {vitalsPatient?.name}
                             </DialogTitle>
                           </DialogHeader>
                           <div className="grid grid-cols-3 gap-4 py-4">
                             <div>
                               <Label htmlFor="bp">BP (SYS/DIA)</Label>
-                              <Input id="bp" placeholder="e.g., 120/80" />
+                              <Input id="bp" placeholder="e.g., 120/80" value={vitalsData.bp} onChange={(e) => setVitalsData({...vitalsData, bp: e.target.value})} />
                             </div>
                             <div>
                               <Label htmlFor="hr">HR (bpm)</Label>
-                              <Input id="hr" placeholder="e.g., 75" />
+                              <Input id="hr" placeholder="e.g., 75" value={vitalsData.hr} onChange={(e) => setVitalsData({...vitalsData, hr: e.target.value})} />
                             </div>
                             <div>
                               <Label htmlFor="spo2">SpO2 (%)</Label>
-                              <Input id="spo2" placeholder="e.g., 98" />
+                              <Input id="spo2" placeholder="e.g., 98" value={vitalsData.spo2} onChange={(e) => setVitalsData({...vitalsData, spo2: e.target.value})} />
                             </div>
                             <div className="col-span-3">
                               <Label htmlFor="note">Triage Note</Label>
                               <Textarea
                                 id="note"
                                 placeholder="Enter brief note..."
+                                value={vitalsData.note} 
+                                onChange={(e) => setVitalsData({...vitalsData, note: e.target.value})}
                               />
                             </div>
                           </div>
                            <DialogFooter>
                             <DialogClose asChild>
-                              <Button onClick={() => handleSaveVitals(patient.name)}>
+                              <Button onClick={handleSaveVitals}>
                                 Save Vitals & Note
                               </Button>
                             </DialogClose>

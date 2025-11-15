@@ -43,72 +43,89 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const inventoryItems = [
-  {
-    id: 'INV-001',
-    name: 'N95 Masks (Box of 50)',
-    category: 'PPE',
-    location: 'Central Supply - Aisle 3',
-    stock: 250,
-    par: 200,
-  },
-  {
-    id: 'INV-002',
-    name: 'IV Start Kits',
-    category: 'Medical Supplies',
-    location: 'ER Storage',
-    stock: 75,
-    par: 100,
-  },
-  {
-    id: 'INV-003',
-    name: 'Atorvastatin 20mg',
-    category: 'Pharmacy',
-    location: 'Main Pharmacy',
-    stock: 500,
-    par: 400,
-  },
-  {
-    id: 'INV-004',
-    name: 'Saline Bags 1000ml',
-    category: 'Medical Supplies',
-    location: 'Central Supply - Aisle 1',
-    stock: 150,
-    par: 150,
-  },
-  {
-    id: 'INV-005',
-    name: 'Sterile Gauze (4x4)',
-    category: 'Wound Care',
-    location: 'OR Core',
-    stock: 45,
-    par: 100,
-  },
-];
+type Medication = {
+  id: string;
+  name: string;
+  category: string; // Assuming 'form' or a new field for category
+  location: string; // Not in schema, but needed for UI
+  stock: number; // Assuming 'quantity' from MedicationBatch
+  par: number; // Not in schema, will be static for now
+  form: string;
+};
 
-const pharmacyQueue = [
-  {
-    rxId: 'RX-001',
-    patient: 'Jane Smith',
-    mrn: 'MRN-OPD-003',
-    medication: 'Amoxicillin 500mg',
-    prescriber: 'Dr. Alan Grant',
-    status: 'Pending',
-  },
-  {
-    rxId: 'RX-002',
-    patient: 'John Appleseed',
-    mrn: 'MRN-OPD-006',
-    medication: 'Ibuprofen 200mg',
-    prescriber: 'Dr. Alan Grant',
-    status: 'Pending',
-  },
-];
+type Prescription = {
+  id: string;
+  patientId: string; // Need to fetch patient name
+  medicationId: string; // Need to fetch medication name
+  doctorId: string; // Need to fetch doctor name
+  status: 'Pending' | 'Dispensed'; // Added for UI
+};
 
 export default function InventoryPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const { data: medications, isLoading: loadingMeds } = useCollection<Medication>(
+    useMemoFirebase(() => collection(firestore, 'medications'), [firestore])
+  );
+  
+  const { data: prescriptions, isLoading: loadingPrescriptions } = useCollection<Prescription>(
+    useMemoFirebase(() => collection(firestore, 'prescriptions'), [firestore])
+  );
+
+  const { data: patients } = useCollection<{id: string, name: string}>(
+    useMemoFirebase(() => collection(firestore, 'patients'), [firestore])
+  );
+
+  const { data: doctors } = useCollection<{id: string, firstName: string, lastName: string}>(
+    useMemoFirebase(() => collection(firestore, 'doctors'), [firestore])
+  );
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+        title: "Feature not implemented",
+        description: `${feature} is coming soon.`,
+    });
+  };
+  
+  // Augmenting prescription data with names
+  const pharmacyQueue = prescriptions?.filter(p => p.status !== 'Dispensed').map(rx => {
+    const patient = patients?.find(p => p.id === rx.patientId);
+    const medication = medications?.find(m => m.id === rx.medicationId);
+    const doctor = doctors?.find(d => d.id === rx.doctorId);
+    return {
+      ...rx,
+      patientName: patient?.name || 'Unknown Patient',
+      medicationName: medication?.name || 'Unknown Medication',
+      doctorName: `Dr. ${doctor?.firstName || ''} ${doctor?.lastName || 'Unknown'}`,
+    }
+  });
+  
+  // Creating inventory items from medications
+  const inventoryItems = medications?.map(med => ({
+      ...med,
+      id: med.id,
+      category: med.form,
+      location: 'Main Pharmacy', // Static for now
+      stock: med.stock || Math.floor(Math.random() * 300), // Mock stock
+      par: 200, // Mock par
+  }));
+
+  const itemsBelowPar = inventoryItems?.filter(i => i.stock < i.par).length || 0;
+  
+  const isLoading = loadingMeds || loadingPrescriptions;
+
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Loading Inventory & Pharmacy...</p></div>
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -122,10 +139,10 @@ export default function InventoryPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => handlePlaceholderClick('Receive Shipment')}>
               <Truck className="mr-2" /> Receive Shipment
             </Button>
-            <Button>
+            <Button onClick={() => handlePlaceholderClick('New Item')}>
               <PackagePlus className="mr-2" /> New Item
             </Button>
           </div>
@@ -154,24 +171,21 @@ export default function InventoryPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Rx ID</TableHead>
-                      <TableHead>Patient (MRN)</TableHead>
+                      <TableHead>Patient</TableHead>
                       <TableHead>Medication</TableHead>
                       <TableHead>Prescriber</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pharmacyQueue.map((rx) => (
-                      <TableRow key={rx.rxId}>
-                        <TableCell className="font-mono">{rx.rxId}</TableCell>
+                    {pharmacyQueue?.map((rx) => (
+                      <TableRow key={rx.id}>
+                        <TableCell className="font-mono text-xs">{rx.id.substring(0,8)}</TableCell>
                         <TableCell>
-                          <div className="font-medium">{rx.patient}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {rx.mrn}
-                          </div>
+                          <div className="font-medium">{rx.patientName}</div>
                         </TableCell>
-                        <TableCell>{rx.medication}</TableCell>
-                        <TableCell>{rx.prescriber}</TableCell>
+                        <TableCell>{rx.medicationName}</TableCell>
+                        <TableCell>{rx.doctorName}</TableCell>
                         <TableCell className="text-right">
                           <Dialog>
                             <DialogTrigger asChild>
@@ -185,17 +199,17 @@ export default function InventoryPage() {
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="py-4 text-center">
-                                <Label>Scan Wristband for {rx.patient}</Label>
+                                <Label>Scan Wristband for {rx.patientName}</Label>
                                 <Input
                                   placeholder="Waiting for barcode scan..."
                                   className="mt-2 text-center"
                                 />
                                 <p className="mt-4 text-sm text-muted-foreground">
-                                  Medication: {rx.medication}
+                                  Medication: {rx.medicationName}
                                 </p>
                               </div>
                               <DialogFooter>
-                                <Button className="w-full">
+                                <Button className="w-full" onClick={() => handlePlaceholderClick('Confirm & Dispense')}>
                                   <CheckCircle className="mr-2" /> Confirm & Dispense
                                 </Button>
                               </DialogFooter>
@@ -219,7 +233,7 @@ export default function InventoryPage() {
                   <Boxes className="size-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">1,284</div>
+                  <div className="text-2xl font-bold">{medications?.length || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     Across all departments
                   </p>
@@ -233,7 +247,7 @@ export default function InventoryPage() {
                   <AlertCircle className="size-5 text-destructive" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-destructive">52</div>
+                  <div className="text-2xl font-bold text-destructive">{itemsBelowPar}</div>
                   <p className="text-xs text-muted-foreground">
                     Action required to reorder
                   </p>
@@ -247,9 +261,9 @@ export default function InventoryPage() {
                   <DollarSign className="size-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$1.2M</div>
+                  <div className="text-2xl font-bold">$...</div>
                   <p className="text-xs text-muted-foreground">
-                    Estimated on-hand value
+                    Calculation pending
                   </p>
                 </CardContent>
               </Card>
@@ -261,7 +275,7 @@ export default function InventoryPage() {
                   <Package className="size-5 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">15</div>
+                  <div className="text-2xl font-bold">0</div>
                   <p className="text-xs text-muted-foreground">
                     From various suppliers
                   </p>
@@ -285,9 +299,10 @@ export default function InventoryPage() {
                         type="search"
                         placeholder="Search items..."
                         className="pl-8 sm:w-[300px]"
+                        onChange={() => handlePlaceholderClick('Search')}
                       />
                     </div>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={() => handlePlaceholderClick('Export')}>
                       <FileDown className="mr-2" /> Export
                     </Button>
                   </div>
@@ -305,7 +320,7 @@ export default function InventoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {inventoryItems.map((item) => (
+                    {inventoryItems?.map((item) => (
                       <TableRow
                         key={item.id}
                         className={
@@ -315,7 +330,7 @@ export default function InventoryPage() {
                         }
                       >
                         <TableCell className="font-mono text-xs">
-                          {item.id}
+                          {item.id.substring(0,8)}
                         </TableCell>
                         <TableCell className="font-medium">
                           {item.name}

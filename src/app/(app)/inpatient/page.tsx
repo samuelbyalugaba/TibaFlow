@@ -44,70 +44,22 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const wards = [
-  { name: 'Medical-Surgical', occupancy: 85, beds: '34/40' },
-  { name: 'ICU', occupancy: 90, beds: '9/10' },
-  { name: 'Pediatrics', occupancy: 60, beds: '12/20' },
-  { name: 'Maternity', occupancy: 75, beds: '15/20' },
-];
 
-const patients = [
-  {
-    name: 'Eleanor Vance',
-    mrn: 'MRN-EV-001',
-    bed: 'MS-301A',
-    admissionDate: '2023-07-18',
-    dx: 'Pneumonia',
-    status: 'Stable',
-    bedStatus: 'Occupied',
-  },
-  {
-    name: 'Marcus Thorne',
-    mrn: 'MRN-MT-002',
-    bed: 'ICU-02B',
-    admissionDate: '2023-07-20',
-    dx: 'Post-CABG',
-    status: 'Critical',
-    bedStatus: 'Occupied',
-  },
-  {
-    name: 'Seraphina Moon',
-    mrn: 'MRN-SM-003',
-    bed: 'PED-105',
-    admissionDate: '2023-07-21',
-    dx: 'Asthma Exacerbation',
-    status: 'Observation',
-    bedStatus: 'Occupied',
-  },
-  {
-    name: 'Julian Arbor',
-    mrn: 'MRN-JA-004',
-    bed: 'MAT-202',
-    admissionDate: '2023-07-21',
-    dx: 'Pre-eclampsia',
-    status: 'Discharge Pending',
-    bedStatus: 'Occupied',
-  },
-  {
-    name: '',
-    mrn: '',
-    bed: 'MS-301B',
-    admissionDate: '',
-    dx: '',
-    status: '',
-    bedStatus: 'Clean',
-  },
-    {
-    name: '',
-    mrn: '',
-    bed: 'MS-302A',
-    admissionDate: '',
-    dx: '',
-    status: '',
-    bedStatus: 'Dirty',
-  },
-];
+type Patient = {
+  id: string;
+  name: string;
+  mrn: string;
+  bed: string;
+  admissionDate: string;
+  dx: string;
+  status: string;
+  bedStatus: 'Occupied' | 'Clean' | 'Dirty' | 'Blocked';
+  encounterType: string;
+};
 
 const statusColors = {
   Stable: 'bg-green-100 text-green-800',
@@ -125,6 +77,31 @@ const bedStatusColors = {
 
 
 export default function InpatientPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const patientsCollectionRef = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
+  const { data: allPatients, isLoading } = useCollection<Patient>(patientsCollectionRef);
+
+  const patients = allPatients?.filter(p => p.encounterType === 'Inpatient');
+
+  const wards = [
+    { name: 'Medical-Surgical', occupancy: patients?.filter(p => p.bed?.startsWith('MS')).length / 40 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('MS')).length || 0}/40` },
+    { name: 'ICU', occupancy: patients?.filter(p => p.bed?.startsWith('ICU')).length / 10 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('ICU')).length || 0}/10` },
+    { name: 'Pediatrics', occupancy: patients?.filter(p => p.bed?.startsWith('PED')).length / 20 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('PED')).length || 0}/20` },
+    { name: 'Maternity', occupancy: patients?.filter(p => p.bed?.startsWith('MAT')).length / 20 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('MAT')).length || 0}/20` },
+  ];
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+        title: "Feature not implemented",
+        description: `${feature} is coming soon.`,
+    });
+  };
+  
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Loading Inpatient Dashboard...</p></div>
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -140,7 +117,7 @@ export default function InpatientPage() {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => handlePlaceholderClick('Filter by Ward')}>
                   <Filter className="mr-2" /> Filter by Ward
                 </Button>
               </DropdownMenuTrigger>
@@ -148,7 +125,7 @@ export default function InpatientPage() {
                 <DropdownMenuLabel>Wards</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {wards.map((w) => (
-                  <DropdownMenuItem key={w.name}>{w.name}</DropdownMenuItem>
+                  <DropdownMenuItem key={w.name} onClick={() => handlePlaceholderClick('Filter by Ward')}>{w.name}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -176,7 +153,7 @@ export default function InpatientPage() {
                         <Input id="nurse" placeholder="Search nurse name..." />
                     </div>
                 </div>
-                 <Button className="w-full">
+                 <Button className="w-full" onClick={() => handlePlaceholderClick('Admit Patient')}>
                     <PlusCircle className="mr-2" /> Admit Patient
                   </Button>
               </DialogContent>
@@ -192,11 +169,11 @@ export default function InpatientPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">78%</div>
+              <div className="text-2xl font-bold">{Math.round(wards.reduce((acc, w) => acc + w.occupancy, 0) / wards.length) || 0}%</div>
               <p className="text-xs text-muted-foreground">
-                70 of 90 beds occupied
+                {patients?.length || 0} of 90 beds occupied
               </p>
-              <Progress value={78} className="mt-2" />
+              <Progress value={Math.round(wards.reduce((acc, w) => acc + w.occupancy, 0) / wards.length) || 0} className="mt-2" />
             </CardContent>
           </Card>
           {wards.map((ward) => (
@@ -207,7 +184,7 @@ export default function InpatientPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{ward.occupancy}%</div>
+                <div className="text-2xl font-bold">{Math.round(ward.occupancy)}%</div>
                 <p className="text-xs text-muted-foreground">
                   {ward.beds} beds occupied
                 </p>
@@ -237,8 +214,8 @@ export default function InpatientPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {patients.map((p) => (
-                  <TableRow key={p.bed}>
+                {patients?.map((p) => (
+                  <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <Bed className={cn("size-4", bedStatusColors[p.bedStatus as keyof typeof bedStatusColors])} />
@@ -274,10 +251,10 @@ export default function InpatientPage() {
                     <TableCell className="text-right">
                        {p.name && (
                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => handlePlaceholderClick('Tasks')}>
                                 <ClipboardList className="mr-1 size-4" /> Tasks
                             </Button>
-                             <Button variant="outline" size="sm">
+                             <Button variant="outline" size="sm" onClick={() => handlePlaceholderClick('Discharge')}>
                                 <LogOut className="mr-1 size-4" /> Discharge
                             </Button>
                          </div>

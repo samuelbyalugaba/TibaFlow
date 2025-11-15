@@ -42,54 +42,23 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
-const labResults = [
-  {
-    orderId: 'ORD-LAB-001',
-    patient: 'Walter White',
-    test: 'Complete Blood Count (CBC)',
-    orderedBy: 'Dr. Goodman',
-    collectionTime: '2023-10-27 09:00',
-    status: 'Completed',
-    isCritical: false,
-  },
-  {
-    orderId: 'ORD-RAD-001',
-    patient: 'Jesse Pinkman',
-    test: 'Chest X-Ray, 2 Views',
-    orderedBy: 'Dr. Fring',
-    collectionTime: '2023-10-27 09:15',
-    status: 'Pending Results',
-    isCritical: false,
-  },
-  {
-    orderId: 'ORD-LAB-002',
-    patient: 'Skyler White',
-    test: 'Basic Metabolic Panel (BMP)',
-    orderedBy: 'Dr. Goodman',
-    collectionTime: '2023-10-27 09:30',
-    status: 'Processing',
-    isCritical: true,
-  },
-  {
-    orderId: 'ORD-LAB-003',
-    patient: 'Hank Schrader',
-    test: 'Lipid Panel',
-    orderedBy: 'Dr. Ehrmantraut',
-    collectionTime: '2023-10-27 10:00',
-    status: 'Received',
-  },
-  {
-    orderId: 'ORD-RAD-002',
-    patient: 'Saul Goodman',
-    test: 'CT Head w/o contrast',
-    orderedBy: 'Dr. Fring',
-    collectionTime: '2023-10-27 10:30',
-    status: 'Collected',
-  },
-];
+
+type LabOrder = {
+  id: string;
+  patientId: string;
+  testType: string;
+  orderDate: string;
+  status: 'Completed' | 'Pending Results' | 'Processing' | 'Received' | 'Collected' | 'Ordered';
+  isCritical?: boolean;
+  doctorId: string;
+};
 
 const statusStyles: { [key: string]: string } = {
   Completed: 'bg-green-100 text-green-800',
@@ -101,6 +70,49 @@ const statusStyles: { [key: string]: string } = {
 };
 
 export default function LabsPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const { data: labOrders, isLoading: loadingLabs } = useCollection<LabOrder>(
+    useMemoFirebase(() => collection(firestore, 'labOrders'), [firestore])
+  );
+
+  const { data: patients } = useCollection<{id: string, name: string}>(
+    useMemoFirebase(() => collection(firestore, 'patients'), [firestore])
+  );
+
+  const { data: doctors } = useCollection<{id: string, firstName: string, lastName: string}>(
+    useMemoFirebase(() => collection(firestore, 'doctors'), [firestore])
+  );
+
+  const handlePlaceholderClick = (feature: string) => {
+    toast({
+        title: "Feature not implemented",
+        description: `${feature} is coming soon.`,
+    });
+  };
+
+  const augmentedLabResults = labOrders?.map(order => {
+    const patient = patients?.find(p => p.id === order.patientId);
+    const doctor = doctors?.find(d => d.id === order.doctorId);
+    return {
+      ...order,
+      orderId: order.id,
+      patient: patient?.name || 'Unknown Patient',
+      test: order.testType,
+      orderedBy: `Dr. ${doctor?.firstName || ''} ${doctor?.lastName || 'Unknown'}`,
+      collectionTime: new Date(order.orderDate).toLocaleString(),
+    }
+  });
+
+  const pendingLabCount = labOrders?.filter(o => o.status !== 'Completed' && o.testType.toLowerCase().includes('lab')).length || 0;
+  const pendingRadiologyCount = labOrders?.filter(o => o.status !== 'Completed' && o.testType.toLowerCase().includes('rad')).length || 0;
+  const criticalResultsCount = labOrders?.filter(o => o.isCritical && o.status !== 'Completed').length || 0;
+
+  if (loadingLabs) {
+    return <div className="flex h-screen w-full items-center justify-center"><p>Loading Labs & Radiology...</p></div>
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -117,10 +129,11 @@ export default function LabsPage() {
             <Input
               placeholder="Search by Patient Name or Order ID..."
               className="w-64"
+              onChange={() => handlePlaceholderClick('Search')}
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => handlePlaceholderClick('Filter')}>
                   <Filter className="mr-2" /> Filter by Status
                 </Button>
               </DropdownMenuTrigger>
@@ -128,7 +141,7 @@ export default function LabsPage() {
                 <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {Object.keys(statusStyles).map((status) => (
-                  <DropdownMenuItem key={status}>{status}</DropdownMenuItem>
+                  <DropdownMenuItem key={status} onClick={() => handlePlaceholderClick('Filter')}>{status}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -153,7 +166,7 @@ export default function LabsPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button className="w-full">Submit Order & Print Label</Button>
+                  <Button className="w-full" onClick={() => handlePlaceholderClick('New Order')}>Submit Order & Print Label</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -169,7 +182,7 @@ export default function LabsPage() {
               <Microscope className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
+              <div className="text-2xl font-bold">{pendingLabCount}</div>
               <p className="text-xs text-muted-foreground">3 are STAT orders</p>
             </CardContent>
           </Card>
@@ -181,7 +194,7 @@ export default function LabsPage() {
               <Beaker className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">5</div>
+              <div className="text-2xl font-bold">{pendingRadiologyCount}</div>
               <p className="text-xs text-muted-foreground">1 requires pre-auth</p>
             </CardContent>
           </Card>
@@ -205,7 +218,7 @@ export default function LabsPage() {
               <AlertTriangle className="size-5 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-500">2</div>
+              <div className="text-2xl font-bold text-red-500">{criticalResultsCount}</div>
               <p className="text-xs text-muted-foreground">
                 Pending provider acknowledgement
               </p>
@@ -234,13 +247,13 @@ export default function LabsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {labResults.map((order) => (
+                {augmentedLabResults?.map((order) => (
                   <TableRow
                     key={order.orderId}
                     className={order.isCritical ? 'bg-red-50' : ''}
                   >
                     <TableCell className="font-mono text-xs">
-                      {order.orderId}
+                      {order.orderId.substring(0,8)}
                     </TableCell>
                     <TableCell className="font-medium">{order.patient}</TableCell>
                     <TableCell>
@@ -293,8 +306,8 @@ export default function LabsPage() {
                             </div>
                           </div>
                           <DialogFooter>
-                            <Button variant="outline">Cancel</Button>
-                            <Button>
+                            <Button variant="outline" onClick={() => handlePlaceholderClick('Cancel')}>Cancel</Button>
+                            <Button onClick={() => handlePlaceholderClick('Finalize')}>
                               <CheckCircle className="mr-2" />
                               Finalize & Notify Doctor
                             </Button>
