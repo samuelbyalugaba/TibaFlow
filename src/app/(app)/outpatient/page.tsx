@@ -81,15 +81,16 @@ export default function OutpatientPage() {
     useMemoFirebase(() => collection(firestore, 'doctors'), [firestore])
   );
 
-  const outpatientQueue = allPatients
-    ?.filter(p => p.encounterType === 'OPD')
-    .map(patient => {
-        const assignedDoctor = doctors?.find(d => d.id === patient.doctorId);
-        return {
-            ...patient,
-            doctorName: assignedDoctor ? `Dr. ${assignedDoctor.firstName} ${assignedDoctor.lastName}` : (patient.doctor || 'Unassigned'),
-        };
-    });
+    const outpatientQueue = allPatients?.reduce((acc: (Patient & { doctorName: string })[], patient) => {
+        if (patient.encounterType === 'OPD') {
+            const assignedDoctor = doctors?.find(d => d.id === patient.doctorId);
+            acc.push({
+                ...patient,
+                doctorName: assignedDoctor ? `Dr. ${assignedDoctor.firstName} ${assignedDoctor.lastName}` : (patient.doctor || 'Unassigned'),
+            });
+        }
+        return acc;
+    }, []);
 
   const handlePlaceholderClick = (feature: string) => {
     toast({
@@ -252,5 +253,3 @@ export default function OutpatientPage() {
     </div>
   );
 }
-
-    
