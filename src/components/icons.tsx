@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 export function Logo(props: Omit<ImageProps, 'src' | 'alt'>) {
   const { className, ...rest } = props;
   return (
-    <div className={cn("relative w-7 h-7", className)}>
+    <div className={cn("relative w-5 h-5", className)}>
       <Image
         src="/TibaFLow.png"
         alt="TibaFlow Logo"
