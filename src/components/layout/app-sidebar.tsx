@@ -88,10 +88,7 @@ export function AppSidebar() {
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="h-16 justify-center">
-        <Logo className="size-7 text-primary" />
-        <span className="font-headline text-lg font-semibold tracking-tight text-primary">
-          TibaFlow
-        </span>
+        <Logo className="size-16" />
       </SidebarHeader>
 
       <SidebarContent>
