@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from '@/firebase';
 import { Logo } from '@/components/icons';
@@ -24,17 +24,18 @@ export default function LoginPage() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
 
-  if (isUserLoading) {
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Loading...</p>
       </div>
     );
-  }
-
-  if (user) {
-    router.replace('/dashboard');
-    return null;
   }
 
   const handleSignIn = async () => {
