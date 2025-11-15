@@ -67,9 +67,8 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Logo className="size-10 text-primary" />
+            <Logo className="size-32 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-headline">TibaFlow</CardTitle>
           <CardDescription>
             Enter your credentials to access the hospital system.
           </CardDescription>
