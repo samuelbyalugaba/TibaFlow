@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Bed,
   Filter,
@@ -41,12 +42,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 type Patient = {
@@ -75,6 +79,13 @@ const bedStatusColors = {
     Blocked: 'text-gray-500',
 }
 
+const wards = [
+    { name: 'All Wards', prefix: '' },
+    { name: 'Medical-Surgical', prefix: 'MS', totalBeds: 40 },
+    { name: 'ICU', prefix: 'ICU', totalBeds: 10 },
+    { name: 'Pediatrics', prefix: 'PED', totalBeds: 20 },
+    { name: 'Maternity', prefix: 'MAT', totalBeds: 20 },
+];
 
 export default function InpatientPage() {
   const firestore = useFirestore();
@@ -82,20 +93,78 @@ export default function InpatientPage() {
   const patientsCollectionRef = useMemoFirebase(() => collection(firestore, 'patients'), [firestore]);
   const { data: allPatients, isLoading } = useCollection<Patient>(patientsCollectionRef);
 
-  const patients = allPatients?.filter(p => p.encounterType === 'Inpatient');
+  const [wardFilter, setWardFilter] = useState('All Wards');
+  const [isAdmitting, setIsAdmitting] = useState(false);
+  const [admitMrn, setAdmitMrn] = useState('');
+  const [admitBed, setAdmitBed] = useState('');
 
-  const wards = [
-    { name: 'Medical-Surgical', occupancy: patients?.filter(p => p.bed?.startsWith('MS')).length / 40 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('MS')).length || 0}/40` },
-    { name: 'ICU', occupancy: patients?.filter(p => p.bed?.startsWith('ICU')).length / 10 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('ICU')).length || 0}/10` },
-    { name: 'Pediatrics', occupancy: patients?.filter(p => p.bed?.startsWith('PED')).length / 20 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('PED')).length || 0}/20` },
-    { name: 'Maternity', occupancy: patients?.filter(p => p.bed?.startsWith('MAT')).length / 20 * 100 || 0, beds: `${patients?.filter(p => p.bed?.startsWith('MAT')).length || 0}/20` },
-  ];
+
+  const inpatientPatients = allPatients?.filter(p => p.encounterType === 'Inpatient');
+
+  const displayedPatients = inpatientPatients?.filter(p => {
+      if (wardFilter === 'All Wards') return true;
+      const selectedWard = wards.find(w => w.name === wardFilter);
+      return p.bed?.startsWith(selectedWard?.prefix || '---');
+  });
+
+  const wardStats = wards.filter(w => w.totalBeds).map(ward => {
+      const occupiedCount = inpatientPatients?.filter(p => p.bed?.startsWith(ward.prefix)).length || 0;
+      return {
+          ...ward,
+          occupancy: (occupiedCount / ward.totalBeds) * 100,
+          beds: `${occupiedCount}/${ward.totalBeds}`,
+      }
+  });
+
+  const totalBeds = wards.reduce((sum, ward) => sum + (ward.totalBeds || 0), 0);
+  const totalOccupied = inpatientPatients?.length || 0;
+  const overallOccupancy = totalBeds > 0 ? (totalOccupied / totalBeds) * 100 : 0;
 
   const handlePlaceholderClick = (feature: string) => {
     toast({
         title: "Feature not implemented",
         description: `${feature} is coming soon.`,
     });
+  };
+
+  const handleDirectAdmit = () => {
+    if (!admitMrn || !admitBed) {
+      toast({
+        variant: 'destructive',
+        title: 'Admission Failed',
+        description: 'Patient MRN and Bed Assignment are required.',
+      });
+      return;
+    }
+    const patientToAdmit = allPatients?.find(p => p.mrn === admitMrn);
+    if (!patientToAdmit) {
+      toast({
+        variant: 'destructive',
+        title: 'Patient Not Found',
+        description: `No patient found with MRN: ${admitMrn}. Please register them first.`,
+      });
+      return;
+    }
+
+    const patientDocRef = doc(firestore, 'patients', patientToAdmit.id);
+    const updateData = {
+        encounterType: 'Inpatient',
+        bed: admitBed,
+        bedStatus: 'Occupied',
+        status: 'Stable',
+        admissionDate: new Date().toLocaleDateString('en-US'),
+        dx: 'Observation',
+    };
+    updateDocumentNonBlocking(patientDocRef, updateData);
+
+    toast({
+        title: 'Patient Admitted',
+        description: `${patientToAdmit.name} has been admitted to bed ${admitBed}.`
+    });
+
+    setIsAdmitting(false);
+    setAdmitMrn('');
+    setAdmitBed('');
   };
   
   if (isLoading) {
@@ -117,19 +186,19 @@ export default function InpatientPage() {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" onClick={() => handlePlaceholderClick('Filter by Ward')}>
-                  <Filter className="mr-2" /> Filter by Ward
+                <Button variant="outline">
+                  <Filter className="mr-2" /> {wardFilter}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Wards</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {wards.map((w) => (
-                  <DropdownMenuItem key={w.name} onClick={() => handlePlaceholderClick('Filter by Ward')}>{w.name}</DropdownMenuItem>
+                  <DropdownMenuItem key={w.name} onSelect={() => setWardFilter(w.name)}>{w.name}</DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Dialog>
+            <Dialog open={isAdmitting} onOpenChange={setIsAdmitting}>
               <DialogTrigger asChild>
                 <Button>
                   <UserPlus className="mr-2" /> Direct Admit
@@ -137,31 +206,32 @@ export default function InpatientPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Admit Patient</DialogTitle>
+                  <DialogTitle>Direct Admit Patient</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-1">
                         <Label htmlFor="mrn">Patient MRN</Label>
-                        <Input id="mrn" placeholder="Search by MRN..." />
+                        <Input id="mrn" placeholder="Search by MRN..." value={admitMrn} onChange={(e) => setAdmitMrn(e.target.value)} />
                     </div>
                      <div className="space-y-1">
                         <Label htmlFor="bed">Assign Bed</Label>
-                        <Input id="bed" placeholder="e.g., MS-304B" />
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="nurse">Assign Nurse</Label>
-                        <Input id="nurse" placeholder="Search nurse name..." />
+                        <Input id="bed" placeholder="e.g., MS-304B" value={admitBed} onChange={(e) => setAdmitBed(e.target.value)} />
                     </div>
                 </div>
-                 <Button className="w-full" onClick={() => handlePlaceholderClick('Admit Patient')}>
-                    <PlusCircle className="mr-2" /> Admit Patient
-                  </Button>
+                 <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleDirectAdmit}>
+                        <PlusCircle className="mr-2" /> Admit Patient
+                    </Button>
+                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">
@@ -169,14 +239,14 @@ export default function InpatientPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(wards.reduce((acc, w) => acc + w.occupancy, 0) / wards.length) || 0}%</div>
+              <div className="text-2xl font-bold">{Math.round(overallOccupancy)}%</div>
               <p className="text-xs text-muted-foreground">
-                {patients?.length || 0} of 90 beds occupied
+                {totalOccupied} of {totalBeds} beds occupied
               </p>
-              <Progress value={Math.round(wards.reduce((acc, w) => acc + w.occupancy, 0) / wards.length) || 0} className="mt-2" />
+              <Progress value={overallOccupancy} className="mt-2" />
             </CardContent>
           </Card>
-          {wards.map((ward) => (
+          {wardStats.map((ward) => (
             <Card key={ward.name}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">
@@ -198,7 +268,7 @@ export default function InpatientPage() {
           <CardHeader>
             <CardTitle>Bed Board & Patient Census</CardTitle>
             <CardDescription>
-              Real-time view of all inpatient beds and assigned patients.
+              {wardFilter === 'All Wards' ? 'Real-time view of all inpatient beds and assigned patients.' : `Showing patients for: ${wardFilter}`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -214,12 +284,19 @@ export default function InpatientPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {patients?.map((p) => (
+                {displayedPatients?.length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                            No patients in this unit.
+                        </TableCell>
+                    </TableRow>
+                )}
+                {displayedPatients?.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Bed className={cn("size-4", bedStatusColors[p.bedStatus as keyof typeof bedStatusColors])} />
-                        {p.bed}
+                        <Bed className={cn("size-4", p.bedStatus ? bedStatusColors[p.bedStatus] : 'text-gray-400')} />
+                        {p.bed || 'N/A'}
                       </div>
                        <div className="text-xs text-muted-foreground">{p.bedStatus}</div>
                     </TableCell>
