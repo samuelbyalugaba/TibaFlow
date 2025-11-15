@@ -107,6 +107,10 @@ const initialPatients = [
     timeline: [
         { step: 'Registered', time: '10:00', by: 'Fatuma', status: 'completed' },
         { step: 'Vitals', time: '10:05', by: 'Nurse Akida', status: 'processing' },
+        { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
+        { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
+        { step: 'Billing', time: null, by: 'Reception', status: 'pending' },
+        { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
     ]
   },
     {
@@ -127,6 +131,11 @@ const initialPatients = [
     encounterType: 'OPD',
     timeline: [
         { step: 'Registered', time: '10:10', by: 'Fatuma', status: 'processing' },
+        { step: 'Vitals', time: null, by: 'Nurse', status: 'pending' },
+        { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
+        { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
+        { step: 'Billing', time: null, by: 'Reception', status: 'pending' },
+        { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
     ]
   },
   {
@@ -147,6 +156,11 @@ const initialPatients = [
     encounterType: 'Discharged',
     timeline: [
       { step: 'Registered', time: '10:15', by: 'Fatuma', status: 'completed' },
+      { step: 'Vitals', time: '10:20', by: 'Nurse', status: 'completed' },
+      { step: 'Labs Ordered', time: '10:25', by: 'Dr. Evelyn', status: 'completed' },
+      { step: 'Results Ready', time: '10:45', by: 'Lab', status: 'completed' },
+      { step: 'Billing', time: '10:55', by: 'Reception', status: 'completed' },
+      { step: 'Discharged', time: '11:00', by: 'Reception', status: 'completed' },
     ]
   },
 ];
@@ -200,16 +214,42 @@ function PatientCard({ patient, onSelect }: { patient: Patient, onSelect: (p: Pa
   );
 }
 
-function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
+function SelectedPatientTimeline({ patient, onAction, onSelect }: { patient: Patient | null, onAction: (action: string) => void, onSelect: (p: Patient | null) => void }) {
     const { toast } = useToast();
     if (!patient) return null;
 
-    const handleAction = (action: string) => {
+    const handleGenericAction = (action: string) => {
         toast({
             title: `Action: ${action}`,
-            description: `Performed action for ${patient.name}`
+            description: `This action for ${patient.name} is a placeholder.`
         });
     };
+
+    const getTimelineItemStatus = (step: TimelineStep, newStatus: string) => {
+      const isCurrentStep = patient.status.replace(/\s/g, '') === step.step.replace(/\s/g, '');
+      const nextStepIndex = patient.timeline.findIndex(s => s.step === step.step) + 1;
+      const nextStep = patient.timeline[nextStepIndex];
+      
+      if(nextStep?.step.replace(/\s/g, '') === newStatus.replace(/\s/g, '')) {
+         return 'completed';
+      }
+
+      if(step.step.replace(/\s/g, '') === newStatus.replace(/\s/g, '')) {
+          return 'processing';
+      }
+      return step.status;
+    }
+
+    const handlePatientUpdate = (newStatus: string, actionText: string) => {
+      onAction(actionText);
+      onSelect({
+        ...patient,
+        status: newStatus,
+        lastAction: actionText,
+        lastActionTimestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}),
+        timeline: patient.timeline.map(step => ({...step, status: getTimelineItemStatus(step, newStatus)}))
+      });
+    }
 
     return (
         <Card className={cn(
@@ -217,7 +257,7 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
             "md:left-[--sidebar-width] md:w-[calc(100vw_-_var(--sidebar-width))]",
             "peer-data-[state=collapsed]:md:left-[--sidebar-width-icon] peer-data-[state=collapsed]:md:w-[calc(100vw_-_var(--sidebar-width-icon))]",
             "peer-data-[variant=inset]:bottom-auto peer-data-[variant=inset]:md:left-[calc(var(--sidebar-width)_+_0.5rem)] peer-data-[variant=inset]:md:w-[calc(100vw_-_var(--sidebar-width)_-_1rem)] peer-data-[variant=inset]:md:rounded-lg",
-             "peer-data-[state=collapsed]:peer-data-[variant=inset]:md:left-[calc(var(--sidebar-width-icon)_+_0.5rem)] peer-data-[state=collapsed]:peer-data-[variant=inset]:md:w-[calc(100vw_-_var(--sidebar-width-icon)_-_1rem)]"
+            "peer-data-[state=collapsed]:peer-data-[variant=inset]:md:left-[calc(var(--sidebar-width-icon)_+_0.5rem)] peer-data-[state=collapsed]:peer-data-[variant=inset]:md:w-[calc(100vw_-_var(--sidebar-width-icon)_-_1rem)]"
             )}>
             <CardHeader className="p-4">
                 <div className="flex items-center justify-between">
@@ -240,7 +280,7 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
                     <h4 className="font-semibold text-sm mb-2">Chain Timeline</h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                         {patient.timeline.map((item: TimelineStep) => (
-                            <div key={item.step} className="flex items-center gap-1 cursor-pointer" onClick={() => handleAction(`View step: ${item.step}`)}>
+                            <div key={item.step} className="flex items-center gap-1 cursor-pointer" onClick={() => handleGenericAction(`View step: ${item.step}`)}>
                                 {item.status === 'completed' && <Badge className="bg-green-500 size-4 p-0"><Check className="size-3"/></Badge>}
                                 {item.status === 'processing' && <Badge className="bg-yellow-500 size-4 p-0 animate-pulse"></Badge>}
                                 {item.status === 'pending' && <Badge variant="outline" className="size-4 p-0"></Badge>}
@@ -254,12 +294,12 @@ function SelectedPatientTimeline({ patient }: { patient: Patient | null }) {
                 <div>
                      <h4 className="font-semibold text-sm mb-2">Role-Based Actions</h4>
                      <div className="flex flex-wrap gap-2">
-                         <Button size="sm" variant="outline" onClick={() => handleAction('Open Chart')}><User className="mr-1"/>Open Chart</Button>
-                         <Button size="sm" variant="outline" onClick={() => handleAction('View Labs')}><FlaskConical className="mr-1"/>View Labs</Button>
-                         <Button size="sm" variant="outline" onClick={() => handleAction('e-Prescribe')}><Pill className="mr-1"/>e-Prescribe</Button>
-                         <Button size="sm" variant="outline" onClick={() => handleAction('Generate Bill')}><DollarSign className="mr-1"/>Generate Bill</Button>
-                         <Button size="sm" variant="secondary" onClick={() => handleAction('Print Summary')}><Printer className="mr-1"/>Print Summary</Button>
-                         <Button size="sm" variant="secondary" onClick={() => handleAction('SMS Patient')}><Phone className="mr-1"/>SMS Patient</Button>
+                         <Button size="sm" variant="outline" onClick={() => handlePatientUpdate('In Progress', 'Start Visit')}><User className="mr-1"/>Start Visit</Button>
+                         <Button size="sm" variant="outline" onClick={() => handlePatientUpdate('Labs', 'Order Labs')}><FlaskConical className="mr-1"/>Order Labs</Button>
+                         <Button size="sm" variant="outline" onClick={() => handlePatientUpdate('Pharmacy', 'e-Prescribe')}><Pill className="mr-1"/>e-Prescribe</Button>
+                         <Button size="sm" variant="outline" onClick={() => handlePatientUpdate('Done', 'Generate Bill')}><DollarSign className="mr-1"/>Generate Bill</Button>
+                         <Button size="sm" variant="secondary" onClick={() => handleGenericAction('Print Summary')}><Printer className="mr-1"/>Print Summary</Button>
+                         <Button size="sm" variant="secondary" onClick={() => handleGenericAction('SMS Patient')}><Phone className="mr-1"/>SMS Patient</Button>
                      </div>
                 </div>
             </CardContent>
@@ -309,6 +349,11 @@ function NewPatientModal({ open, onOpenChange, onRegister }: { open: boolean, on
         encounterType: 'OPD',
         timeline: [
             { step: 'Registered', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit'}), by: 'Fatuma', status: 'processing' },
+            { step: 'Vitals', time: null, by: 'Nurse', status: 'pending' },
+            { step: 'Labs Ordered', time: null, by: 'Doctor', status: 'pending' },
+            { step: 'Pharmacy', time: null, by: 'Pharmacist', status: 'pending' },
+            { step: 'Billing', time: null, by: 'Reception', status: 'pending' },
+            { step: 'Discharged', time: null, by: 'Reception', status: 'pending' },
         ]
     };
     onRegister(newPatient);
@@ -366,6 +411,7 @@ export default function PatientsPage() {
       waiting: false,
       labsPending: false,
   });
+  const { toast } = useToast();
 
   const handleRegisterPatient = (newPatient: Patient) => {
       setPatients(prev => [newPatient, ...prev]);
@@ -375,14 +421,27 @@ export default function PatientsPage() {
     setQuickFilters(prev => ({ ...prev, [filter]: !prev[filter] }));
   };
 
+  const handleUpdatePatient = (updatedPatient: Patient) => {
+    setPatients(prev => prev.map(p => p.mrn === updatedPatient.mrn ? updatedPatient : p));
+    setSelectedPatient(updatedPatient);
+  }
+
+  const handleAction = (action: string) => {
+    toast({
+        title: `Action: ${action}`,
+        description: `Patient ${selectedPatient?.name} moved to next stage.`
+    });
+  };
+
   const filteredPatients = useMemo(() => {
     return patients
       .filter(p => {
         // Encounter Type Filter
         if (activeEncounterFilter === 'OPD') return p.encounterType === 'OPD';
         if (activeEncounterFilter === 'Discharged') return p.encounterType === 'Discharged';
+        if (activeEncounterFilter === 'All') return true;
         // Add other encounter types here...
-        return true; // fallback
+        return p.encounterType === activeEncounterFilter; // fallback
       })
       .filter(p => {
         // Search Filter
@@ -411,6 +470,7 @@ export default function PatientsPage() {
     emergency: patients.filter(p => p.encounterType === 'Emergency').length,
     inpatient: patients.filter(p => p.encounterType === 'Inpatient').length,
     discharged: patients.filter(p => p.encounterType === 'Discharged').length,
+    all: patients.length,
   }), [patients]);
 
   return (
@@ -439,6 +499,7 @@ export default function PatientsPage() {
                   <CardContent className="flex flex-wrap items-center gap-4 p-2">
                     <div className="flex items-center gap-2">
                       <Label>Encounter:</Label>
+                      <Button variant={activeEncounterFilter === 'All' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('All')}>All ({encounterCounts.all})</Button>
                       <Button variant={activeEncounterFilter === 'OPD' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('OPD')}>OPD ({encounterCounts.opd})</Button>
                       <Button variant={activeEncounterFilter === 'Emergency' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('Emergency')}>Emergency ({encounterCounts.emergency})</Button>
                       <Button variant={activeEncounterFilter === 'Inpatient' ? 'default' : 'ghost'} size="sm" className="h-7" onClick={() => setActiveEncounterFilter('Inpatient')}>Inpatient ({encounterCounts.inpatient})</Button>
@@ -484,10 +545,12 @@ export default function PatientsPage() {
                 </div>
             </main>
         <NewPatientModal open={isRegistering} onOpenChange={setIsRegistering} onRegister={handleRegisterPatient} />
-        <SelectedPatientTimeline patient={selectedPatient} />
+        <SelectedPatientTimeline patient={selectedPatient} onAction={handleAction} onSelect={handleUpdatePatient} />
         </div>
     </div>
   );
 }
+
+    
 
     
