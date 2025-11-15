@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Clock,
   UserPlus,
@@ -34,10 +36,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from "@/hooks/use-toast"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const triageLevels = {
   '1': { name: 'ESI 1 - Resuscitation', color: 'bg-red-600 text-white' },
@@ -47,7 +59,7 @@ const triageLevels = {
   '5': { name: 'ESI 5 - Non-Urgent', color: 'bg-blue-500 text-white' },
 };
 
-const erPatients = [
+const initialErPatients = [
   {
     name: 'Carlos Garcia',
     mrn: 'MRN123987',
@@ -91,6 +103,42 @@ const erPatients = [
 ];
 
 export default function EmergencyPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [erPatients, setErPatients] = useState(initialErPatients);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [fastTrackFilter, setFastTrackFilter] = useState(false);
+
+  const handleSaveVitals = (patientName: string) => {
+    toast({
+      title: "Vitals Saved",
+      description: `Vitals and note have been saved for ${patientName}.`,
+    });
+  };
+
+  const handleRegisterPatient = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const newPatient = {
+      name: formData.get('name') as string,
+      mrn: `MRN${Math.floor(Math.random() * 900000) + 100000}`,
+      triage: formData.get('triage') as string,
+      complaint: formData.get('complaint') as string,
+      doorToDoc: '1 min',
+      location: 'Waiting Room',
+    };
+    setErPatients([newPatient, ...erPatients]);
+    setIsRegistering(false);
+    toast({
+      title: "Patient Registered",
+      description: `${newPatient.name} has been added to the triage board.`,
+    });
+  };
+
+  const displayedPatients = fastTrackFilter
+    ? erPatients.filter(p => p.triage === '4' || p.triage === '5')
+    : erPatients;
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -104,12 +152,52 @@ export default function EmergencyPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Rabbit className="mr-2" /> Fast-Track Queue
+            <Button variant={fastTrackFilter ? "default" : "outline"} onClick={() => setFastTrackFilter(!fastTrackFilter)}>
+              <Rabbit className="mr-2" /> {fastTrackFilter ? "Show All" : "Fast-Track Queue"}
             </Button>
-            <Button>
-              <UserPlus className="mr-2" /> Quick Register
-            </Button>
+            <Dialog open={isRegistering} onOpenChange={setIsRegistering}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2" /> Quick Register
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Quick Register ER Patient</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleRegisterPatient}>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="name">Patient Name</Label>
+                      <Input id="name" name="name" placeholder="e.g., John Doe" required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="complaint">Chief Complaint</Label>
+                      <Input id="complaint" name="complaint" placeholder="e.g., Chest Pain" required />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="triage">Triage (ESI)</Label>
+                       <Select name="triage" defaultValue="3" required>
+                        <SelectTrigger id="triage">
+                          <SelectValue placeholder="Select ESI Level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(triageLevels).map(([level, {name}]) => (
+                             <SelectItem key={level} value={level}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button" variant="secondary">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit">Register Patient</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </header>
 
@@ -136,8 +224,8 @@ export default function EmergencyPage() {
               <Users className="size-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">14</div>
-              <p className="text-xs text-muted-foreground">3 high priority</p>
+              <div className="text-2xl font-bold">{erPatients.filter(p => p.location === 'Waiting Room').length}</div>
+              <p className="text-xs text-muted-foreground">{erPatients.filter(p => ['1', '2'].includes(p.triage)).length} high priority</p>
             </CardContent>
           </Card>
           <Card>
@@ -170,7 +258,7 @@ export default function EmergencyPage() {
           <CardHeader>
             <CardTitle>Triage Board</CardTitle>
             <CardDescription>
-              Live feed of all patients in the emergency department.
+              {fastTrackFilter ? "Showing only fast-track patients (ESI 4 & 5)." : "Live feed of all patients in the emergency department."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -186,7 +274,7 @@ export default function EmergencyPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {erPatients.map((patient) => (
+                {displayedPatients.map((patient) => (
                   <TableRow
                     key={patient.mrn}
                     className={
@@ -260,11 +348,17 @@ export default function EmergencyPage() {
                               />
                             </div>
                           </div>
-                          <Button className="w-full">Save Vitals & Note</Button>
+                           <DialogFooter>
+                            <DialogClose asChild>
+                              <Button onClick={() => handleSaveVitals(patient.name)}>
+                                Save Vitals & Note
+                              </Button>
+                            </DialogClose>
+                          </DialogFooter>
                         </DialogContent>
                       </Dialog>
 
-                      <Button variant="secondary" size="sm">
+                      <Button variant="secondary" size="sm" onClick={() => router.push('/patients')}>
                         <ClipboardList className="mr-1 size-4" /> Details
                       </Button>
                     </TableCell>
